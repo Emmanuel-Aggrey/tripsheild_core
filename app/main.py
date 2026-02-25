@@ -71,9 +71,9 @@ async def root():
 if not settings.IS_TESTING and not settings.DEBUG:
     sentry_sdk.init(
         dsn=settings.SENTRY_DSN,
-        environment=settings.CHAT_API_BASE_URL,
+        environment=settings.APP_NAME,
         traces_sample_rate=1.0,
         profiles_sample_rate=1.0,
-        server_name=settings.CHAT_API_BASE_URL,
+        server_name=settings.APP_NAME,
         enable_tracing=True,
     )
