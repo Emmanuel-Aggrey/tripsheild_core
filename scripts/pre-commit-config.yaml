@@ -1,0 +1,82 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: check-merge-conflict
+      - id: debug-statements
+      - id: mixed-line-ending
+      - id: check-case-conflict
+      - id: check-yaml
+      - id: no-commit-to-branch
+        args:
+          - --branch
+          - master
+  - repo: https://github.com/benjeffery/pre-commit-copyright-year
+    rev: c62dcbb78f724162e14197f8fa264eaa8c3aad49
+    hooks:
+      - id: copyright-year
+  - repo: https://github.com/benjeffery/pre-commit-clang-format
+    rev: "1.0"
+    hooks:
+      - id: clang-format
+        exclude: dev-tools|examples
+        verbose: true
+  - repo: https://github.com/myint/autoflake
+    rev: v2.2.1
+    hooks:
+      - id: autoflake
+        args:
+          - --in-place
+          - --remove-all-unused-imports
+          - --remove-unused-variables
+          - --ignore-init-module-imports
+  - repo: https://github.com/asottile/reorder_python_imports
+    rev: v3.12.0
+    hooks:
+      - id: reorder-python-imports
+        args:
+          - --application-directories=python
+          - --unclassifiable-application-module=_tskit
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.15.0
+    hooks:
+      - id: pyupgrade
+        args:
+          - --py3-plus
+          - --py37-plus
+  - repo: https://github.com/psf/black
+    rev: 23.11.0
+    hooks:
+      - id: black
+        language_version: python3
+  - repo: https://github.com/pycqa/flake8
+    rev: 6.1.0
+    hooks:
+      - id: flake8
+        additional_dependencies:
+          - flake8-bugbear==22.10.27
+          - flake8-builtins==2.0.1
+        args: ["--max-line-length", "120"]
+        exclude: .*migrations/.*\.py
+
+  - repo: https://github.com/asottile/blacken-docs
+    rev: 1.16.0
+    hooks:
+      - id: blacken-docs
+        args:
+          - --skip-errors
+        additional_dependencies:
+          - black==22.3.0
+        language_version: python3
+  - repo: local
+    hooks:
+      - id: custom-pre-commit-checks
+        name: custom-pre-commit-checks
+        entry: ./scripts/pre-commit.sh
+        language: script
+        pass_filenames: false
+
+  - repo: https://github.com/ambv/black
+    rev: 23.11.0
+    hooks:
+      - id: black
