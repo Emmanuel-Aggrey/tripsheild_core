@@ -11,8 +11,10 @@ from app.claims.routes import router as claims_router
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from fastapi_pagination import add_pagination
 import logging
+from app.admin import setup_admin
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -31,6 +33,11 @@ app = FastAPI(
 
 
 app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.SECRET_KEY or "change-me-in-env",
+)
+
+app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_origin_regex="http://localhost:*",
@@ -40,6 +47,7 @@ app.add_middleware(
 )
 
 add_pagination(app)
+setup_admin(app)
 
 
 app.include_router(core_router, tags=["core"])

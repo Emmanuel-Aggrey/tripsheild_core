@@ -95,3 +95,7 @@ HUBTEL_SMS_CONFIGURATION = {
     "from": config.get("HUBTEL_SMS_FROM"),
     "url": config.get("HUBTEL_SMS_URL"),
 }
+
+# Admin panel credentials
+ADMIN_LOGIN_USERNAME = config.get("ADMIN_LOGIN_USERNAME", "admin")
+ADMIN_LOGIN_PASSWORD = config.get("ADMIN_LOGIN_PASSWORD", "admin123")
