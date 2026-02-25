@@ -13,7 +13,6 @@ config = {
 APP_NAME = config.get("APP_NAME", "Insurance Consumer")
 
 FRONTEND_URL = config.get("FRONTEND_URL")
-CORE_CONSUMER_API_URL = config.get("CORE_CONSUMER_API_URL")
 SECRET_KEY = config.get("SECRET_KEY")
 ALGORITHM = config.get("ALGORITHM")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(config.get("ACCESS_TOKEN_EXPIRE_MINUTES"))
@@ -27,7 +26,6 @@ DATABASE_PASSWORD = config.get("DATABASE_PASSWORD")
 DATABASE_NAME = config.get("DATABASE_NAME")
 DATABASE_PORT = config.get("DATABASE_PORT")
 SENTRY_DSN = config.get("SENTRY_DSN")
-CHAT_API_BASE_URL = config.get("CHAT_API_BASE_URL")
 
 IS_TESTING = config.get("IS_TESTING") == "True"
 DEBUG = config.get("DEBUG", "False") == "True"
@@ -53,10 +51,6 @@ FILE_MAX_SIZE = int(config.get("FILE_MAX_SIZE"))
 AWS_DEFAULT_ACL = "public-read"
 
 
-APP_HOST: str = os.getenv("APP_HOST", "0.0.0.0")
-APP_PORT: int = int(os.getenv("APP_PORT", "8003"))
-
-
 # PAYSTACK
 PAYSTACK_LIVE_MODE = config.get("PAYSTACK_LIVE_MODE", "False") == "True"
 
@@ -72,9 +66,6 @@ PAYSTACK_SECRET_KEY = (
     if not PAYSTACK_LIVE_MODE
     else config.get("PAYSTACK_LIVE_SECRET_KEY", "WFWS")
 )
-
-
-REDIS_URL = config.get("REDIS_URL", "redis://localhost:6379/0")
 
 
 # SMTP
@@ -99,3 +90,6 @@ HUBTEL_SMS_CONFIGURATION = {
 # Admin panel credentials
 ADMIN_LOGIN_USERNAME = config.get("ADMIN_LOGIN_USERNAME", "admin")
 ADMIN_LOGIN_PASSWORD = config.get("ADMIN_LOGIN_PASSWORD", "admin123")
+
+
+API_BASE_URL = config.get("API_BASE_URL")
