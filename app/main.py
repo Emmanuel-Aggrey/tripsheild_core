@@ -34,7 +34,7 @@ app = FastAPI(
 
 app.add_middleware(
     SessionMiddleware,
-    secret_key=settings.SECRET_KEY or "change-me-in-env",
+    secret_key=settings.SECRET_KEY,
 )
 
 app.add_middleware(
