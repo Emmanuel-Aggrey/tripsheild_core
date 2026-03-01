@@ -19,31 +19,27 @@ class AccountView:
     db: Session = Depends(get_db)
     current_user: UserSchema = Depends(get_current_active_user)
 
+    @router.get("/", response_model=list[UserResponseSchema])
+    async def get_users(self, request: Request):
+        return service_locator.account_service.get_users(self.db)
+
     @router.get("/me/", response_model=UserResponseSchema)
-    @router.get("/", response_model=UserResponseSchema)
     async def get_account(self, request: Request):
         return self.current_user
 
-    @router.patch("/me/", response_model=UserResponseSchema)
-    @router.patch("/", response_model=UserResponseSchema)
-    async def update_profile(self, payload: UserProfileUpdateSchema):
-        update_data = payload.model_dump(exclude_unset=True)
-        if not update_data:
-            return self.current_user
-
-        if "email" in update_data:
-            existing = service_locator.account_service.get_user_by_email(
-                self.db, update_data["email"]
+    @router.patch("/{id}/", response_model=UserResponseSchema)
+    async def update_profile(self, id: str, payload: UserProfileUpdateSchema):
+        if not service_locator.account_service.is_admin(self.current_user) and str(self.current_user.id) != id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Admin access required or you are not allowed to update this user"
             )
-            if existing and str(existing.id) != str(self.current_user.id):
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="Email already in use",
-                )
+
+        update_data = payload.model_dump(exclude_unset=True)
 
         updated_user = service_locator.general_service.update_data(
             db=self.db,
-            key=self.current_user.id,
+            key=id,
             data=update_data,
             model=User
         )

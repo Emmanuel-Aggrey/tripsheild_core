@@ -5,7 +5,7 @@ from app.authentication.routes import router as auth_router
 from app.core.routes import router as core_router
 from app.insuranc_records.routes import router as insurance_router
 from app.features.routes import router as features_router
-from app.packages.routes import router as packages_router
+from app.packages.routes import packages_router, subscriptions_router
 from app.payment.routes import router as payment_router
 from app.claims.routes import router as claims_router
 
@@ -58,7 +58,10 @@ app.include_router(auth_router, tags=["auhentication"])
 app.include_router(accounts_router, tags=["users"], prefix="/accounts",)
 app.include_router(insurance_router, tags=["insurance"], prefix="/insurance",)
 app.include_router(features_router, tags=["features"], prefix="/features",)
-app.include_router(packages_router, tags=["packages"], prefix="/packages",)
+app.include_router(packages_router, tags=["packages"], prefix="/packages")
+app.include_router(subscriptions_router, tags=[
+                   "subscriptions"], prefix="/subscriptions")
+
 app.include_router(payment_router, tags=["payment"], prefix="/payment",)
 app.include_router(claims_router, tags=["claims"], prefix="/claims",)
 

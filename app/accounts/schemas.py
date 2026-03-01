@@ -1,6 +1,7 @@
 from typing import Optional
 from enum import Enum
 from app.core.schema import BaseSchema
+from pydantic import BaseModel
 
 
 class UserRoleEnum(str, Enum):
@@ -13,9 +14,7 @@ class BaseUserSchema(BaseSchema):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     phone_number: Optional[str] = None
-    is_active: bool | None = None
     role: Optional[UserRoleEnum] = None
-    code: Optional[str] = None
     profile_picture: Optional[str] = None
     address: Optional[str] = None
     date_of_birth: Optional[str] = None
@@ -36,7 +35,6 @@ class UserResponseSchema(BaseUserSchema):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     phone_number: Optional[str] = None
-    is_active: bool | None = None
     role: Optional[UserRoleEnum]
     profile_picture: Optional[str] = None
     address: Optional[str] = None
@@ -46,5 +44,16 @@ class UserResponseSchema(BaseUserSchema):
     ghana_card_number: Optional[str] = None
 
 
-class UserProfileUpdateSchema(BaseUserSchema):
-    pass
+class UserProfileUpdateSchema(BaseModel):
+    first_name: str
+    last_name: Optional[str] = None
+    role: Optional[UserRoleEnum] = None
+    profile_picture: Optional[str] = None
+    address: Optional[str] = None
+    date_of_birth: Optional[str] = None
+    gender: Optional[str] = None
+    occupation: Optional[str] = None
+    ghana_card_number: Optional[str] = None
+
+    class Config:
+        from_attributes = True

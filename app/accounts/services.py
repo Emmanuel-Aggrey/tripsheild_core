@@ -18,6 +18,9 @@ class AccountService:
             db, {"email": email},
             User, single_record=True)
 
+    def is_admin(self, user: User):
+        return user.role == User.Role.ADMIN
+
     def get_user_by_phone(self, db: Session, phone_number: str):
         return self.service_locator.general_service.filter_data(
             db, {"phone_number": phone_number},

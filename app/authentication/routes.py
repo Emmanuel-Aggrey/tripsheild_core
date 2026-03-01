@@ -59,8 +59,6 @@ class AuthenticationView:
                 self.db, registration_form
             )
 
-            print("User created", user.email, user.phone_number, code)
-
             if registration_form.email:
                 await service_locator.core_service.send_template_email(
                     recipients=[str(registration_form.email)],
@@ -146,14 +144,14 @@ class AuthenticationView:
         user = service_locator.account_service.get_user_by_email(
             self.db, payload.email)
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found",
-            )
-        if not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Account not verified",
+            user = service_locator.general_service.create_data(
+                self.db,
+                User,
+                {
+                    "email": payload.email,
+                    "is_active": False,
+                    "role": User.Role.USER,
+                },
             )
 
         user.code = service_locator.account_service.generate_code(self.db)
@@ -167,14 +165,14 @@ class AuthenticationView:
         user = service_locator.account_service.get_user_by_phone(
             self.db, payload.phone_number)
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found",
-            )
-        if not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Account not verified",
+            user = service_locator.general_service.create_data(
+                self.db,
+                User,
+                {
+                    "phone_number": payload.phone_number,
+                    "is_active": False,
+                    "role": User.Role.USER,
+                },
             )
 
         user.code = service_locator.account_service.generate_code(self.db)
@@ -197,17 +195,14 @@ class AuthenticationView:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found",
             )
-        if not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Account not verified",
-            )
+
         if not user.code or user.code != payload.code:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid OTP code",
+                detail="Invalid OTP code or code has expired",
             )
 
+        user.is_active = True
         user.code = None
         self.db.commit()
 
