@@ -11,6 +11,7 @@ config = {
 
 
 APP_NAME = config.get("APP_NAME", "Insurance Consumer")
+FRONTEND_ORIGINS = config.get("FRONTEND_ORIGINS", "http://localhost:3000")
 
 FRONTEND_URL = config.get("FRONTEND_URL")
 SECRET_KEY = config.get("SECRET_KEY")

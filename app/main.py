@@ -24,6 +24,8 @@ logger = logging.getLogger(__name__)
 origins = [
     "http://localhost:8000",
     "http://localhost:5173",
+    "http://localhost:3000",
+    settings.FRONTEND_ORIGINS,
 ]
 
 
@@ -62,7 +64,7 @@ app.include_router(packages_router, tags=["packages"], prefix="/packages")
 app.include_router(subscriptions_router, tags=[
                    "subscriptions"], prefix="/subscriptions")
 
-app.include_router(payment_router, tags=["payment"], prefix="/payment",)
+app.include_router(payment_router, tags=["payments"], prefix="/payments",)
 app.include_router(claims_router, tags=["claims"], prefix="/claims",)
 
 

@@ -21,6 +21,13 @@ class AccountView:
 
     @router.get("/", response_model=list[UserResponseSchema])
     async def get_users(self, request: Request):
+
+        if not service_locator.account_service.is_admin(self.current_user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Admin access required"
+            )
+
         return service_locator.account_service.get_users(self.db)
 
     @router.get("/me/", response_model=UserResponseSchema)

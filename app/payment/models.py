@@ -3,8 +3,9 @@ from sqlalchemy import Column, String, Boolean, ForeignKey, DateTime, Text
 from sqlalchemy.dialects.postgresql import ENUM as PG_ENUM, UUID as PG_UUID, JSONB
 from sqlalchemy.orm import relationship
 
+
 class Payment(BaseModel):
-    
+
     class CURRENCY:
         GHS = "GHS"
         USD = "USD"
@@ -31,8 +32,6 @@ class Payment(BaseModel):
             (AirtelTigo, ("AirtelTigo")),
             (Vodafone, ("Vodafone")),
         )
-    
-    
 
     class STATUS:
         SUCCESS = "success"
@@ -51,7 +50,6 @@ class Payment(BaseModel):
         CASH = "cash"
         BANK = "bank"
 
-
         CHOICES = (
             (MOMO, "Momo"),
             (CASH, "Cash"),
@@ -66,7 +64,8 @@ class Payment(BaseModel):
         nullable=True
     )
     user_id = Column(String, nullable=False, index=True)
-    subscription_id = Column(PG_UUID(as_uuid=True), ForeignKey("subscriptions.id"), nullable=False)
+    subscription_id = Column(PG_UUID(as_uuid=True), ForeignKey(
+        "subscriptions.id"), nullable=False)
     amount = Column(String(20), nullable=False)
     currency = Column(String(3), default=CURRENCY.GHS, nullable=False)
     payment_method = Column(
@@ -74,7 +73,7 @@ class Payment(BaseModel):
         nullable=False
     )
     transaction_id = Column(String(100), nullable=True, unique=True)
-    ussd_reference = Column(String(100), nullable=True)  
+    ussd_reference = Column(String(100), nullable=True)
     web_page_reference = Column(String(100), nullable=True)
     status = Column(
         PG_ENUM(*STATUS.ALL, name='payment_transaction_status'),
@@ -88,4 +87,3 @@ class Payment(BaseModel):
     payment_link = Column(String, nullable=True)
 
     subscription = relationship("Subscription", back_populates="payments")
-

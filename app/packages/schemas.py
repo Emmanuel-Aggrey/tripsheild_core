@@ -4,6 +4,7 @@ from uuid import UUID
 from decimal import Decimal
 from datetime import datetime
 from enum import Enum
+from app.core.schema import BaseSchema
 
 
 class PackageStatusEnum(str, Enum):
@@ -105,19 +106,23 @@ class PaymentStatusEnum(str, Enum):
 class SubscriptionCreateSchema(BaseModel):
     package_id: UUID
     auto_renew: bool = False
-
-
-class SubscriptionResponseSchema(BaseModel):
-    id: UUID
-    user_id: UUID
-    package_id: UUID
-    status: SubscriptionStatusEnum
-    payment_status: PaymentStatusEnum
+    location_from: Optional[str] = None
+    location_to: Optional[str] = None
+    data: Optional[dict] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
-    auto_renew: bool
-    created_at: datetime
-    updated_at: datetime
+
+
+class SubscriptionResponseSchema(BaseSchema):
+    auto_renew: bool = False
+    location_from: Optional[str] = None
+    location_to: Optional[str] = None
+    data: Optional[dict] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    status: SubscriptionStatusEnum
+    payment_status: PaymentStatusEnum
+    user_id: UUID
     package: Optional[PackageResponseSchema] = None
 
 

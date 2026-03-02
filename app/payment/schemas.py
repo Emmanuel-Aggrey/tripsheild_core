@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional, List
 from uuid import UUID
 from enum import Enum
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, EmailStr
 
 
 class PaymentMethodEnum(str, Enum):
@@ -24,9 +24,7 @@ class PaymentStatusEnum(str, Enum):
 
 
 class BuySubscriptionRequestSchema(BaseModel):
-    package_id: UUID
     payment_method: PaymentMethodEnum = PaymentMethodEnum.BANK
-    auto_renew: bool = False
     phone_number: Optional[str] = None
     provider: Optional[PaymentProviderEnum] = None
     email: Optional[EmailStr] = None
