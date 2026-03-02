@@ -1,5 +1,4 @@
 from .models import Package, Subscription
-from app.database import SessionLocal
 from typing import Optional
 from uuid import UUID
 import logging
@@ -30,46 +29,42 @@ class PackageService:
             raise ValueError(f"Subscription {subscription_id} not found")
         return subscription
 
-    def subscribe_to_package(self, user_id, package_id: str, auto_renew: bool = False) -> Subscription:
-        db = SessionLocal()
-        try:
-            package = self.service_locator.general_service.filter_data(
-                db=db, filter_values={"id": package_id, "is_active": True},
-                model=Package, single_record=True
-            )
-            if not package:
-                raise ValueError(f"Package {package_id} not found or inactive")
+    def subscribe_to_package(self, db, data: dict) -> Subscription:
 
-            subscription = self.service_locator.general_service.create_data(
-                db=db, model=Subscription, data={
-                    "user_id": user_id,
-                    "package_id": package_id,
-                    "status": Subscription.STATUS.PENDING,
-                    "payment_status": Subscription.PAYMENT_STATUS.PENDING,
-                    "auto_renew": auto_renew,
-                }
-            )
-            return self._load_subscription(db, id=subscription.id)
-        except Exception as e:
-            db.rollback()
-            logger.error(f"Failed to subscribe to package: {e}")
-            raise
-        finally:
-            db.close()
+        if not self.service_locator.general_service.filter_data(
+            db=db,
+            model=Package,
+            filter_values={"id": data["package_id"], "is_active": True},
+            single_record=True
+        ):
+            raise ValueError("Package not found or inactive")
 
-    def get_subscriptions(self, subscription_id: str, user_id) -> Optional[Subscription]:
-        db = SessionLocal()
+        if self.service_locator.general_service.filter_data(
+            db=db, model=Subscription,
+            filter_values={
+                "user_id": data["user_id"],
+                "package_id": data["package_id"],
+                "status": Subscription.STATUS.ACTIVE,
+            },
+            single_record=True,
+        ):
+            raise ValueError(
+                "You already have an active subscription for this package")
+
+        return self.service_locator.general_service.create_data(
+            db=db, model=Subscription, data=data
+        )
+
+    def get_subscriptions(self, db, subscription_id: str, user_id) -> Optional[Subscription]:
+
         try:
             return self._load_subscription(
                 db, id=UUID(subscription_id), user_id=user_id
             )
         except ValueError:
             return None
-        finally:
-            db.close()
 
-    def cancel_subscription(self, subscription_id: str, user_id) -> Subscription:
-        db = SessionLocal()
+    def cancel_subscription(self, db, subscription_id: str, user_id) -> Subscription:
         try:
             subscription = self._get_subscription(db, subscription_id, user_id)
             if subscription.status == Subscription.STATUS.CANCELLED:
@@ -86,11 +81,9 @@ class PackageService:
             db.rollback()
             logger.error(f"Failed to cancel subscription: {e}")
             raise
-        finally:
-            db.close()
 
-    def activate_subscription(self, subscription_id: str) -> Subscription:
-        db = SessionLocal()
+    def activate_subscription(self, db, subscription_id: str) -> Subscription:
+
         try:
             up_uuid = UUID(subscription_id)
             subscription = self._load_subscription(db, id=up_uuid)
@@ -119,9 +112,20 @@ class PackageService:
             db.rollback()
             logger.error(f"Failed to activate subscription: {e}")
             raise
-        finally:
-            db.close()
 
-    def change_package(self, user_id, current_subscription_id: str, new_package_id: str) -> Subscription:
-        self.cancel_subscription(current_subscription_id, user_id)
-        return self.subscribe_to_package(user_id, new_package_id)
+    def change_package(self, db, user_id, current_subscription_id: str, new_package_id: str) -> Subscription:
+        try:
+            self.cancel_subscription(db, current_subscription_id, user_id)
+            return self.subscribe_to_package(db, data={
+                "user_id": user_id,
+                "package_id": UUID(new_package_id),
+                "status": Subscription.STATUS.PENDING,
+                "payment_status": Subscription.PAYMENT_STATUS.PENDING,
+                "auto_renew": False,
+                "start_date": None,
+                "end_date": None,
+            })
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Failed to change package: {e}")
+            raise

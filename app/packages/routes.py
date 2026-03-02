@@ -8,9 +8,8 @@ from .schemas import (
     PackageCreateSchema,
     PackageUpdateSchema,
     PackageResponseSchema,
-    SubscriptionCreateSchema,
-    SubscriptionUpdateSchema,
     SubscriptionResponseSchema,
+    SubscriptionCreateSchema
 )
 from .models import Package, Subscription
 from app.dependencies import get_db
@@ -154,7 +153,7 @@ class SubscriptionView:
     @subscriptions_router.get("/{id}/", response_model=SubscriptionResponseSchema)
     def get_subscription(self, id: str) -> Optional[Subscription]:
         subscription = service_locator.package_service.get_subscriptions(
-            subscription_id=id, user_id=str(self.current_user.id)
+            db=self.db, subscription_id=id, user_id=str(self.current_user.id)
         )
         if not subscription:
             raise HTTPException(
@@ -162,22 +161,26 @@ class SubscriptionView:
         return subscription
 
     @subscriptions_router.patch("/{id}/", response_model=SubscriptionResponseSchema)
-    def update_subscription(self, id: str, data: SubscriptionUpdateSchema):
+    def update_subscription(self, id: str, data: SubscriptionResponseSchema):
         try:
-            return service_locator.package_service.cancel_subscription(
-                subscription_id=id, user_id=str(self.current_user.id)
+            return service_locator.general_service.update_data(
+                db=self.db, model=Subscription, key=id, data=data.model_dump(
+                    exclude_unset=True)
             )
         except ValueError as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-    @subscriptions_router.post("/{package_id}/", response_model=SubscriptionResponseSchema, status_code=status.HTTP_201_CREATED)
-    def subscribe_to_package(self, package_id: str, payload: SubscriptionCreateSchema):
+    @subscriptions_router.post("/", response_model=SubscriptionResponseSchema,
+                               status_code=status.HTTP_201_CREATED)
+    def subscribe_to_package(self, payload: SubscriptionCreateSchema):
+
+        user_id = str(self.current_user.id)
         if service_locator.general_service.filter_data(
             db=self.db, model=Subscription,
             filter_values={
-                "user_id": str(self.current_user.id),
-                "package_id": package_id,
+                "user_id": user_id,
+                "package_id": payload.package_id,
                 "status": Subscription.STATUS.ACTIVE,
             },
             single_record=True,
@@ -189,9 +192,10 @@ class SubscriptionView:
 
         try:
             return service_locator.package_service.subscribe_to_package(
-                user_id=str(self.current_user.id),
-                package_id=package_id,
-                auto_renew=payload.auto_renew,
+                db=self.db, data={
+                    **payload.model_dump(),
+                    "user_id": user_id,
+                }
             )
         except ValueError as e:
             raise HTTPException(

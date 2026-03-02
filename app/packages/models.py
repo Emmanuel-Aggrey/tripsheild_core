@@ -1,6 +1,6 @@
 from app.core.models import BaseModel
 from sqlalchemy import Column, String, Integer, Boolean, ForeignKey, DateTime, Text
-from sqlalchemy.dialects.postgresql import ENUM as PG_ENUM, UUID as PG_UUID
+from sqlalchemy.dialects.postgresql import ENUM as PG_ENUM, UUID as PG_UUID, JSONB
 from sqlalchemy.orm import relationship
 from app.features.models import package_features
 
@@ -91,6 +91,9 @@ class Subscription(BaseModel):
     start_date = Column(DateTime(timezone=True), nullable=True)
     end_date = Column(DateTime(timezone=True), nullable=True)
     auto_renew = Column(Boolean, default=False, nullable=False)
+    location_from = Column(String, nullable=True)
+    location_to = Column(String, nullable=True)
+    data = Column(JSONB, nullable=True, default=dict)
 
     # Relationships
     package = relationship("Package", back_populates="subscriptions")
