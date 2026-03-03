@@ -1,6 +1,5 @@
 from fastapi.responses import HTMLResponse
 from fastapi import APIRouter, HTTPException, Request, Depends, status
-from fastapi.responses import RedirectResponse
 import requests
 from app import settings
 import logging
