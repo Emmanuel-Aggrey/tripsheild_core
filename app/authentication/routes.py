@@ -198,7 +198,7 @@ class AuthenticationView:
                 detail="User not found",
             )
 
-        if user and user.code != payload.code:
+        if user and str(user.code) != str(payload.code):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid OTP code or code has expired",
