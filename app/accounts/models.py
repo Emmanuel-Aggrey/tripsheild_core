@@ -31,3 +31,4 @@ class User(BaseModel):
     gender = Column(String, nullable=True)
     occupation = Column(String, nullable=True)
     ghana_card_number = Column(String, nullable=True)
+    is_testing_user = Column(Boolean, default=False)

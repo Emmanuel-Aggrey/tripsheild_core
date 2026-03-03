@@ -175,3 +175,46 @@ class TestAuthentication(BaseTest):
         )
         assert login_response.status_code == status.HTTP_200_OK, login_response.text
         assert "access_token" in login_response.json()
+
+    def test_testing_user_otp_is_not_modified(self):
+        email = f"testing-user-{uuid.uuid4().hex[:8]}@example.com"
+        phone_number = f"23324{uuid.uuid4().hex[:7]}"
+        password = "chimichangas4life"
+
+        register_response = self.client.post(
+            "/register/",
+            json={
+                "first_name": "deadpool",
+                "last_name": "wilson",
+                "phone_number": phone_number,
+                "email": email,
+                "password": password,
+            },
+        )
+        assert register_response.status_code == status.HTTP_200_OK, register_response.text
+
+        db = self.get_db()
+        user = db.query(User).filter(User.email == email).first()
+        assert user is not None
+
+        user.is_testing_user = True
+        user.code = "123456"
+        db.commit()
+        db.refresh(user)
+
+        request_otp_response = self.client.post(
+            "/login/email/",
+            json={"email": email},
+        )
+        assert request_otp_response.status_code == status.HTTP_200_OK, request_otp_response.text
+        db.refresh(user)
+        assert user.code == "123456"
+
+        login_response = self.client.post(
+            "/login/verify-otp/",
+            json={"email": email, "code": "123456"},
+        )
+        assert login_response.status_code == status.HTTP_200_OK, login_response.text
+
+        db.refresh(user)
+        assert user.code == "123456"

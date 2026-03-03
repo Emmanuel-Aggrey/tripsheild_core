@@ -27,7 +27,6 @@ class AuthenticationView:
                 detail="User does not have an email address",
             )
 
-        print("Sending email to", user.email, "code", otp_code)
         await service_locator.core_service.send_template_email(
             recipients=[user.email],
             subject="Login verification code",
@@ -46,7 +45,6 @@ class AuthenticationView:
                 detail="User does not have a phone number",
             )
 
-        print("Sending SMS to", user.phone_number, "code", otp_code)
         service_locator.core_service.send_text_message(
             user.phone_number,
             f"Your login verification code is {otp_code}.",
@@ -59,7 +57,7 @@ class AuthenticationView:
                 self.db, registration_form
             )
 
-            if registration_form.email:
+            if registration_form.email and not user.is_testing_user:
                 await service_locator.core_service.send_template_email(
                     recipients=[str(registration_form.email)],
                     subject="Verify your account",
@@ -71,7 +69,7 @@ class AuthenticationView:
                     },
                 )
 
-            if registration_form.phone_number:
+            if registration_form.phone_number and not user.is_testing_user:
                 service_locator.core_service.send_text_message(
                     registration_form.phone_number,
                     f"Your verification code is {code}.",
@@ -106,7 +104,8 @@ class AuthenticationView:
                     status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid code")
 
             user.is_active = True
-            user.code = None
+            if not user.is_testing_user:
+                user.code = None
             self.db.commit()
 
             return {"detail": "Account verified successfully"}
@@ -142,7 +141,7 @@ class AuthenticationView:
     @router.post("/login/email/")
     async def email_login_request(self, payload: schemas.EmailLoginRequest):
         user = service_locator.account_service.get_user_by_email(
-            self.db, payload.email)
+            self.db, payload.email.strip())
         if not user:
             user = service_locator.general_service.create_data(
                 self.db,
@@ -154,16 +153,17 @@ class AuthenticationView:
                 },
             )
 
-        user.code = service_locator.account_service.generate_code(self.db)
+        if not user.is_testing_user:
+            user.code = service_locator.account_service.generate_code(self.db)
         self.db.commit()
         await self._send_login_otp_email(user, user.code)
 
-        return {"detail": f"OTP sent to email : OTP  {user.code}"}
+        return {"detail": "OTP sent to email"}
 
     @router.post("/login/phone/")
     async def phone_login_request(self, payload: schemas.PhoneLoginRequest):
         user = service_locator.account_service.get_user_by_phone(
-            self.db, payload.phone_number)
+            self.db, payload.phone_number.strip())
         if not user:
             user = service_locator.general_service.create_data(
                 self.db,
@@ -175,20 +175,22 @@ class AuthenticationView:
                 },
             )
 
-        user.code = service_locator.account_service.generate_code(self.db)
+        if not user.is_testing_user:
+            user.code = service_locator.account_service.generate_code(self.db)
         self.db.commit()
         self._send_login_otp_sms(user, user.code)
 
-        return {"detail": f"OTP sent to phone_number : OTP  {user.code}"}
+        return {"detail": "OTP sent to phone number"}
 
     @router.post("/login/verify-otp/", response_model=schemas.Token)
     async def verify_login_otp(self, payload: schemas.VerifyLoginOtpSchema) -> schemas.Token:
+        user = None
         if payload.email:
             user = service_locator.account_service.get_user_by_email(
-                self.db, payload.email)
-        else:
+                self.db, payload.email.strip())
+        if payload.phone_number:
             user = service_locator.account_service.get_user_by_phone(
-                self.db, payload.phone_number)
+                self.db, payload.phone_number.strip())
 
         if not user:
             raise HTTPException(
@@ -196,14 +198,15 @@ class AuthenticationView:
                 detail="User not found",
             )
 
-        if not user.code or user.code != payload.code:
+        if user and user.code != payload.code:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid OTP code or code has expired",
             )
 
         user.is_active = True
-        user.code = None
+        if not user.is_testing_user:
+            user.code = None
         self.db.commit()
 
         token_subject = user.email or user.phone_number
