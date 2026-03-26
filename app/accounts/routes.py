@@ -36,11 +36,7 @@ class AccountView:
 
     @router.patch("/{id}/", response_model=UserResponseSchema)
     async def update_profile(self, id: str, payload: UserProfileUpdateSchema):
-        if not service_locator.account_service.is_admin(self.current_user) and str(self.current_user.id) != id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Admin access required or you are not allowed to update this user"
-            )
+      
 
         update_data = payload.model_dump(exclude_unset=True)
 
