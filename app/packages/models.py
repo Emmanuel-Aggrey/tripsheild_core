@@ -75,6 +75,7 @@ class Subscription(BaseModel):
 
     __tablename__ = "subscriptions"
 
+    beneficiary_name = Column(String, nullable=True)
     user_id = Column(PG_UUID(as_uuid=True), nullable=False, index=True)
     package_id = Column(PG_UUID(as_uuid=True), ForeignKey(
         "packages.id"), nullable=False)
@@ -94,7 +95,10 @@ class Subscription(BaseModel):
     location_from = Column(String, nullable=True)
     location_to = Column(String, nullable=True)
     data = Column(JSONB, nullable=True, default=dict)
+    transport_type_id = Column(PG_UUID, ForeignKey("transport_types.id"))
 
     # Relationships
     package = relationship("Package", back_populates="subscriptions")
     payments = relationship("Payment", back_populates="subscription")
+    transport_type = relationship(
+        "TransportType", back_populates="subscriptions")

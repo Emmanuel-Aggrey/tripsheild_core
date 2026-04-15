@@ -1,7 +1,7 @@
 from .shemas import InsurancRecordSchema
 from .models import InsurancRecord
 from app.database import SessionLocal
-from typing import Optional, Dict, List
+from typing import Optional, Dict
 from uuid import UUID
 import logging
 
@@ -92,7 +92,8 @@ class InsuranceRecordService:
             )
 
             if not record:
-                logger.warning(f"Record {record_id} not found for user {user_id}")
+                logger.warning(
+                    f"Record {record_id} not found for user {user_id}")
                 return None
 
             return self._serialize_record(record)
@@ -107,7 +108,7 @@ class InsuranceRecordService:
         """Update an existing insurance record."""
         db = SessionLocal()
         try:
-          
+
             # Get the existing record
             filter_values = {"id": record_id}
             if not admin_action:
@@ -123,8 +124,6 @@ class InsuranceRecordService:
             if not record:
                 raise ValueError(f"Record {record_id} not found")
 
-        
-
             # Remove admin_action from update_data if present
             update_data.pop("admin_action", None)
 
@@ -134,8 +133,7 @@ class InsuranceRecordService:
 
             # Update the record
             update_data.pop("status", None)
-            
-            
+
             updated_record = self.service_locator.general_service.update_data(
                 db=db,
                 key=record_id,
@@ -147,7 +145,8 @@ class InsuranceRecordService:
             return self._serialize_record(updated_record)
         except Exception as e:
             db.rollback()
-            logger.error(f"✗ Failed to update insurance record: {e}, {update_data}")
+            logger.error(
+                f"✗ Failed to update insurance record: {e}, {update_data}")
             raise
         finally:
             db.close()
@@ -172,7 +171,8 @@ class InsuranceRecordService:
             )
 
             if not record:
-                raise ValueError(f"Record {record_id} not found for user {user_id}")
+                raise ValueError(
+                    f"Record {record_id} not found for user {user_id}")
 
             # Hard delete for now (can be changed to soft delete)
             self.service_locator.general_service.delete_data(

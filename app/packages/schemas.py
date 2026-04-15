@@ -5,6 +5,7 @@ from decimal import Decimal
 from datetime import datetime
 from enum import Enum
 from app.core.schema import BaseSchema
+from app.literal.schemas import TransportTypeSchema
 
 
 class PackageStatusEnum(str, Enum):
@@ -111,9 +112,12 @@ class SubscriptionCreateSchema(BaseModel):
     data: Optional[dict] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
+    transport_type_id: UUID
+    beneficiary_name: str
 
 
 class SubscriptionResponseSchema(BaseSchema):
+    beneficiary_name: Optional[str] = None
     auto_renew: bool = False
     location_from: Optional[str] = None
     location_to: Optional[str] = None
@@ -124,6 +128,7 @@ class SubscriptionResponseSchema(BaseSchema):
     payment_status: PaymentStatusEnum
     user_id: UUID
     package: Optional[PackageResponseSchema] = None
+    transport_type: Optional[TransportTypeSchema] = None
 
 
 class SubscriptionListResponseSchema(BaseModel):

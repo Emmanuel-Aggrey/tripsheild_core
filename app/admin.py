@@ -11,6 +11,7 @@ from app.packages.models import Package, Subscription
 from app.payment.models import Payment
 from app.insuranc_records.models import InsurancRecord
 from app.claims.models import Claim
+from app.literal.models import TransportType
 
 
 class AdminAuth(AuthenticationBackend):
@@ -51,6 +52,17 @@ class FeatureAdmin(ModelView, model=Feature):
 class PackageAdmin(ModelView, model=Package):
     name = "Package"
     name_plural = "Packages"
+    column_list = [
+        Package.id,
+        Package.name,
+        Package.description,
+        Package.price,
+        Package.duration,
+        Package.is_active,
+        Package.status,
+        Package.created_at,
+        Package.updated_at,
+    ]
 
 
 class SubscriptionAdmin(ModelView, model=Subscription):
@@ -73,6 +85,18 @@ class ClaimAdmin(ModelView, model=Claim):
     name_plural = "Claims"
 
 
+class TransportTypeAdmin(ModelView, model=TransportType):
+    name = "Transport Type"
+    name_plural = "Transport Types"
+    column_list = [
+        TransportType.id,
+        TransportType.name,
+        TransportType.description,
+        TransportType.is_active,
+
+    ]
+
+
 def setup_admin(app: FastAPI) -> None:
     authentication_backend = AdminAuth(
         secret_key=settings.SECRET_KEY or "change-me-in-env"
@@ -91,3 +115,4 @@ def setup_admin(app: FastAPI) -> None:
     admin.add_view(PaymentAdmin)
     admin.add_view(InsuranceRecordAdmin)
     admin.add_view(ClaimAdmin)
+    admin.add_view(TransportTypeAdmin)

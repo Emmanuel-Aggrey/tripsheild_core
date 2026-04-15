@@ -8,6 +8,7 @@ from app.features.routes import router as features_router
 from app.packages.routes import packages_router, subscriptions_router
 from app.payment.routes import router as payment_router
 from app.claims.routes import router as claims_router
+from app.literal.routes import literal_router
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -67,6 +68,7 @@ app.include_router(subscriptions_router, tags=[
 
 app.include_router(payment_router, tags=["payments"], prefix="/payments",)
 app.include_router(claims_router, tags=["claims"], prefix="/claims",)
+app.include_router(literal_router, tags=["literals"], prefix="/literals",)
 
 
 @app.get("/")

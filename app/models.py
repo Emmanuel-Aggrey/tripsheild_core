@@ -1,3 +1,4 @@
+from app.literal.models import *  # noqa
 from app.accounts.models import *  # noqa
 from app.database import Base  # noqa
 from app.general.models import *  # noqa
