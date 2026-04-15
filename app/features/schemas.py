@@ -1,8 +1,8 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List
-from decimal import Decimal
+from pydantic import Field
+from typing import Optional
 from uuid import UUID
 from app.core.schema import BaseSchema
+
 
 class FeatureBaseSchema(BaseSchema):
     name: str = Field(..., max_length=100)
@@ -22,7 +22,6 @@ class FeatureUpdateSchema(BaseSchema):
 
 class FeatureResponseSchema(FeatureBaseSchema):
     id: UUID
-
 
     class Config:
         from_attributes = True
