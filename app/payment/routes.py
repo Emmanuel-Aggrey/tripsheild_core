@@ -21,6 +21,8 @@ from app.payment.schemas import (
     SubmitOtpRequestSchema,
     PaymentResponseSchema,
 )
+from fastapi_pagination import Page, Params
+from fastapi_pagination.ext.sqlalchemy import paginate as sa_paginate
 from uuid import UUID
 
 logger = logging.getLogger(__name__)
@@ -53,7 +55,6 @@ class PaymentView:
             )
 
         try:
-
             payment = service_locator.payment_service.create(
                 db=self.db,
                 user_id=user_id,
@@ -80,11 +81,21 @@ class PaymentView:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
+    @router.get("/", response_model=Page[PaymentResponseSchema])
+    def list_payments(self, params: Params = Depends()):
+        queryset = self.db.query(Payment).filter(
+            Payment.user_id == str(self.current_user.id)
+        ).order_by(Payment.created_at.desc())
+        return sa_paginate(self.db, queryset, params)
+
     @router.post("/{subscription_id}/verify/", response_model=PaymentResponseSchema)
     def verify_payment(self, subscription_id: UUID):
         subscription: Subscription = service_locator.general_service.get_data_by_id(
             db=self.db, key=subscription_id, model=Subscription
         )
+        if not subscription or str(subscription.user_id) != str(self.current_user.id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
         if subscription.payment_status == Subscription.PAYMENT_STATUS.PAID:
             raise HTTPException(
@@ -128,18 +139,20 @@ class PaymentView:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-    @router.get("/{subscription_id}/", response_model=PaymentResponseSchema)
-    def get_payment(self, subscription_id: UUID):
+    @router.get("/{id}/", response_model=PaymentResponseSchema)
+    def get_payment(self, id: UUID):
+        user_id = str(self.current_user.id)
+        # Try by payment ID first, then by subscription ID
         payment = (
             self.db.query(Payment)
-            .filter(
-                Payment.subscription_id == subscription_id,
-                Payment.user_id == str(self.current_user.id),
-            )
+            .filter(Payment.id == id, Payment.user_id == user_id)
+            .first()
+        ) or (
+            self.db.query(Payment)
+            .filter(Payment.subscription_id == id, Payment.user_id == user_id)
             .order_by(Payment.created_at.desc())
             .first()
         )
-
         if not payment:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
@@ -157,7 +170,7 @@ async def payment_redirect(request: Request, payment_id: str, db: Session = Depe
         if not payment:
             raise HTTPException(status_code=404, detail="Payment not found")
 
-        result_status = "pending"
+        result_status = "missing_reference"
 
         if reference:
             service_locator.general_service.update_data(
@@ -183,12 +196,8 @@ async def payment_redirect(request: Request, payment_id: str, db: Session = Depe
                     db.commit()
                     result_status = "success"
                 else:
-                    service_locator.general_service.update_data(
-                        db=db,
-                        key=payment.id,
-                        data={"status": Payment.STATUS.FAILED},
-                        model=Payment
-                    )
+                    service_locator.payment_service._mark_payment_failed(
+                        db, payment)
                     db.commit()
                     result_status = "failed"
 
@@ -257,9 +266,7 @@ async def paystack_callback(request: Request, db: Session = Depends(get_db)):
             service_locator.payment_service._finalize_successful_payment(
                 db, payment)
         else:
-            service_locator.general_service.update_data(
-                db=db, key=payment.id, data={"status": Payment.STATUS.FAILED}, model=Payment
-            )
+            service_locator.payment_service._mark_payment_failed(db, payment)
 
         db.commit()
         return {"message": "Processed", "payment_id": str(payment.id)}

@@ -39,17 +39,17 @@ class PackageService:
         ):
             raise ValueError("Package not found or inactive")
 
-        if self.service_locator.general_service.filter_data(
-            db=db, model=Subscription,
-            filter_values={
-                "user_id": data["user_id"],
-                "package_id": data["package_id"],
-                "status": Subscription.STATUS.ACTIVE,
-            },
-            single_record=True,
-        ):
+        # Check if user has an unpaid subscription for this package (regardless of status)
+        unpaid_subscription = db.query(Subscription).filter(
+            Subscription.user_id == data["user_id"],
+            Subscription.package_id == data["package_id"],
+            Subscription.payment_status != Subscription.PAYMENT_STATUS.PAID,
+            Subscription.status != Subscription.STATUS.CANCELLED
+        ).first()
+
+        if unpaid_subscription:
             raise ValueError(
-                "You already have an active subscription for this package")
+                "You have an unpaid subscription for this package. Please complete payment first.")
 
         return self.service_locator.general_service.create_data(
             db=db, model=Subscription, data=data
@@ -115,8 +115,12 @@ class PackageService:
 
     def change_package(self, db, user_id, current_subscription_id: str, new_package_id: str) -> Subscription:
         try:
-            self.cancel_subscription(db, current_subscription_id, user_id)
-            return self.subscribe_to_package(db, data={
+            subscription = self._get_subscription(
+                db, current_subscription_id, user_id)
+            if subscription.status == Subscription.STATUS.CANCELLED:
+                raise ValueError("Subscription already cancelled")
+
+            new_subscription = self.subscribe_to_package(db, data={
                 "user_id": user_id,
                 "package_id": UUID(new_package_id),
                 "status": Subscription.STATUS.PENDING,
@@ -125,6 +129,15 @@ class PackageService:
                 "start_date": None,
                 "end_date": None,
             })
+            self.service_locator.general_service.update_data(
+                db=db, key=UUID(current_subscription_id),
+                data={"status": Subscription.STATUS.CANCELLED},
+                model=Subscription,
+            )
+            db.commit()
+            logger.info(
+                f"Changed package for user {user_id}: {current_subscription_id} -> {new_package_id}")
+            return new_subscription
         except Exception as e:
             db.rollback()
             logger.error(f"Failed to change package: {e}")

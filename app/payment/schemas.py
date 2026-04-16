@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional, List
 from uuid import UUID
 from enum import Enum
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 
 class PaymentMethodEnum(str, Enum):
@@ -24,6 +24,7 @@ class PaymentStatusEnum(str, Enum):
 
 
 class BuySubscriptionRequestSchema(BaseModel):
+    package_id: Optional[UUID] = None
     payment_method: PaymentMethodEnum = PaymentMethodEnum.BANK
     phone_number: Optional[str] = None
     provider: Optional[PaymentProviderEnum] = None
@@ -45,6 +46,8 @@ class SubmitOtpRequestSchema(BaseModel):
 
 
 class PaymentResponseSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     user_id: str
     subscription_id: UUID

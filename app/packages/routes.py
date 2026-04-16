@@ -9,7 +9,8 @@ from .schemas import (
     PackageUpdateSchema,
     PackageResponseSchema,
     SubscriptionResponseSchema,
-    SubscriptionCreateSchema
+    SubscriptionCreateSchema,
+    SubscriptionUpdateSchema,
 )
 from .models import Package, Subscription
 from app.dependencies import get_db
@@ -21,6 +22,23 @@ from app.authentication.utils import get_current_active_user
 packages_router = APIRouter(dependencies=[Depends(get_current_active_user)])
 subscriptions_router = APIRouter(
     dependencies=[Depends(get_current_active_user)])
+
+
+def _do_update_subscription(db: Session, id: str, user_id: str, data: SubscriptionUpdateSchema) -> Subscription:
+    subscription = service_locator.package_service.get_subscriptions(
+        db=db, subscription_id=id, user_id=user_id
+    )
+    if not subscription:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
+    try:
+        return service_locator.general_service.update_data(
+            db=db, model=Subscription, key=id, data=data.model_dump(
+                exclude_unset=True)
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @cbv(packages_router)
@@ -161,34 +179,14 @@ class SubscriptionView:
         return subscription
 
     @subscriptions_router.patch("/{id}/", response_model=SubscriptionResponseSchema)
-    def update_subscription(self, id: str, data: SubscriptionResponseSchema):
-        try:
-            return service_locator.general_service.update_data(
-                db=self.db, model=Subscription, key=id, data=data.model_dump(
-                    exclude_unset=True)
-            )
-        except ValueError as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    def update_subscription(self, id: str, data: SubscriptionUpdateSchema):
+        return _do_update_subscription(self.db, id, str(self.current_user.id), data)
 
     @subscriptions_router.post("/", response_model=SubscriptionResponseSchema,
                                status_code=status.HTTP_201_CREATED)
     def subscribe_to_package(self, payload: SubscriptionCreateSchema):
 
         user_id = str(self.current_user.id)
-        if service_locator.general_service.filter_data(
-            db=self.db, model=Subscription,
-            filter_values={
-                "user_id": user_id,
-                "package_id": payload.package_id,
-                "status": Subscription.STATUS.ACTIVE,
-            },
-            single_record=True,
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Active subscription already exists for this package",
-            )
 
         try:
             return service_locator.package_service.subscribe_to_package(

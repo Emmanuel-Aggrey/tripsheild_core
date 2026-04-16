@@ -119,7 +119,7 @@ class TestAuthentication(BaseTest):
         )
         assert request_otp_response.status_code == status.HTTP_200_OK, request_otp_response.text
         assert request_otp_response.json(
-        )["detail"] == "OTP sent to email : OTP  "
+        )["detail"] == "OTP sent to email"
 
         db.refresh(user)
         assert user.code is not None
@@ -164,7 +164,7 @@ class TestAuthentication(BaseTest):
         )
         assert request_otp_response.status_code == status.HTTP_200_OK, request_otp_response.text
         assert request_otp_response.json(
-        )["detail"] == "OTP sent to phone_number"
+        )["detail"] == "OTP sent to phone number"
 
         db.refresh(user)
         assert user.code is not None

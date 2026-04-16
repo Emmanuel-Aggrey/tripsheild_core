@@ -68,11 +68,39 @@ class PackageAdmin(ModelView, model=Package):
 class SubscriptionAdmin(ModelView, model=Subscription):
     name = "Subscription"
     name_plural = "Subscriptions"
+    column_list = [
+        Subscription.id,
+        Subscription.user_id,
+        Subscription.package_id,
+        Subscription.status,
+        Subscription.payment_status,
+        Subscription.start_date,
+        Subscription.end_date,
+        Subscription.auto_renew,
+        Subscription.created_at,
+        Subscription.updated_at,
+    ]
 
 
 class PaymentAdmin(ModelView, model=Payment):
     name = "Payment"
     name_plural = "Payments"
+    column_list = [
+        Payment.id,
+        Payment.provider,
+        Payment.user_id,
+        Payment.subscription_id,
+        Payment.amount,
+        Payment.currency,
+        Payment.payment_method,
+        Payment.transaction_id,
+        Payment.status,
+        Payment.paid_at,
+        Payment.initiate_payment_prompt,
+        Payment.payment_link,
+        Payment.created_at,
+        Payment.updated_at,
+    ]
 
 
 class InsuranceRecordAdmin(ModelView, model=InsurancRecord):
@@ -83,6 +111,15 @@ class InsuranceRecordAdmin(ModelView, model=InsurancRecord):
 class ClaimAdmin(ModelView, model=Claim):
     name = "Claim"
     name_plural = "Claims"
+    column_list = [
+        Claim.id,
+        Claim.user_id,
+        # Claim.insurance_record_id,
+        # Claim.amount,
+        Claim.status,
+        Claim.created_at,
+        Claim.updated_at,
+    ]
 
 
 class TransportTypeAdmin(ModelView, model=TransportType):
