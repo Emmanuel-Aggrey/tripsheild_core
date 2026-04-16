@@ -3,6 +3,8 @@ from datetime import timedelta
 from datetime import timezone
 from typing import Annotated, Optional
 import jwt
+import re
+
 from app.accounts.schemas import UserSchema
 from app.dependencies import get_db
 from app.settings import ACCESS_TOKEN_EXPIRE_MINUTES
@@ -27,6 +29,21 @@ router = APIRouter()
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 
+def normalize_phone_number(phone_number: str) -> str:
+    if not phone_number:
+        return phone_number
+
+    phone = re.sub(r"[\s\-\(\)\+]", "", phone_number)
+
+    if phone.startswith("0"):
+        phone = "233" + phone[1:]
+
+    if not phone.startswith("233"):
+        return None
+
+    return "+" + phone
+
+
 def verify_password(plain_password, hashed_password):
     try:
         return pwd_context.verify(plain_password, hashed_password)
@@ -39,13 +56,15 @@ def get_password_hash(password):
 
 
 def get_user(identifier: str, db: Session):
-    user = service_locator.account_service.get_user_by_identifier(db, identifier)
+    user = service_locator.account_service.get_user_by_identifier(
+        db, identifier)
     if user:
         return user
 
 
 def authenticate_user(db: Session, identifier: str, password: str):
-    user = service_locator.account_service.get_user_by_identifier(db, identifier)
+    user = service_locator.account_service.get_user_by_identifier(
+        db, identifier)
     if not user:
         return False
     if not verify_password(password, user.hashed_password):

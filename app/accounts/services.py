@@ -22,9 +22,21 @@ class AccountService:
         return user.role == User.Role.ADMIN
 
     def get_user_by_phone(self, db: Session, phone_number: str):
-        return self.service_locator.general_service.filter_data(
-            db, {"phone_number": phone_number},
-            User, single_record=True)
+        from app.authentication.utils import normalize_phone_number
+
+        normalized_input = normalize_phone_number(phone_number)
+
+        if not normalized_input:
+            return None
+
+        users = db.query(User).all()
+        for user in users:
+            if user.phone_number:
+                normalized_stored = normalize_phone_number(user.phone_number)
+                if normalized_stored == normalized_input:
+                    return user
+
+        return None
 
     def get_user_by_identifier(self, db: Session, identifier: str):
         user = self.get_user_by_email(db, identifier)
@@ -36,20 +48,44 @@ class AccountService:
         return db.query(User).offset(skip).limit(limit).all()
 
     def create_user(self, db: Session, user: "UserRegistrationForm"):
-        from app.authentication.utils import get_password_hash
+        from app.authentication.utils import get_password_hash, normalize_phone_number
 
-        if user.email and db.query(User).filter(User.email == user.email).first():
-            raise ValueError("User with this email already exists")
-        if user.phone_number and db.query(User).filter(User.phone_number == user.phone_number).first():
-            raise ValueError("User with this phone number already exists")
+        # Check email (case-insensitive)
+        if user.email:
+            existing_user = db.query(User).filter(
+                User.email.ilike(user.email.strip())
+            ).first()
+            if existing_user:
+                raise ValueError("User with this email already exists")
+
+        # Check phone number (normalized)
+        if user.phone_number:
+            normalized_input = normalize_phone_number(
+                user.phone_number.strip())
+            if not normalized_input:
+                raise ValueError("Invalid phone number format")
+
+            # Check against all users with normalized phone
+            all_users = db.query(User).all()
+            for existing_user in all_users:
+                if existing_user.phone_number:
+                    normalized_existing = normalize_phone_number(
+                        existing_user.phone_number)
+                    if normalized_existing == normalized_input:
+                        raise ValueError(
+                            "User with this phone number already exists")
+
+            phone_number = normalized_input
+        else:
+            phone_number = user.phone_number
 
         code = self.generate_code(db)
 
         data = {
-            "email": user.email,
+            "email": user.email.strip() if user.email else None,
             "first_name": user.first_name,
             "last_name": user.last_name,
-            "phone_number": user.phone_number,
+            "phone_number": phone_number,
             "hashed_password": get_password_hash(user.password),
             "is_active": False,
             "role": user.role or User.Role.USER,

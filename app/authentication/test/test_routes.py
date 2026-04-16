@@ -133,7 +133,9 @@ class TestAuthentication(BaseTest):
 
     def test_phone_login_otp_flow(self):
         email = f"otp-phone-{uuid.uuid4().hex[:8]}@example.com"
-        phone_number = f"23324{uuid.uuid4().hex[:7]}"
+        # Use a valid Ghana phone number format: 10 digits starting with 0
+        random_suffix = uuid.uuid4().hex[:7]  # 7 random hex chars
+        phone_number = f"0559{random_suffix}"  # e.g., 055912abcdef (10 digits)
         password = "chimichangas4life"
 
         register_response = self.client.post(
@@ -149,7 +151,11 @@ class TestAuthentication(BaseTest):
         assert register_response.status_code == status.HTTP_200_OK, register_response.text
 
         db = self.get_db()
-        user = db.query(User).filter(User.phone_number == phone_number).first()
+        # Query using the normalized phone number format
+        from app.authentication.utils import normalize_phone_number
+        normalized_phone = normalize_phone_number(phone_number)
+        user = db.query(User).filter(
+            User.phone_number == normalized_phone).first()
         assert user is not None
 
         verify_response = self.client.post(

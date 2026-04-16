@@ -84,12 +84,25 @@ class AuthenticationView:
     @router.post("/verify/")
     async def verify_email(self, payload: schemas.VerifyEmailSchema):
         try:
+            from app.authentication.utils import normalize_phone_number
+
             if payload.email:
                 user = self.db.query(User).filter(
                     User.email == payload.email).first()
             else:
-                user = self.db.query(User).filter(
-                    User.phone_number == payload.phone_number).first()
+                # Normalize phone number for comparison
+                normalized_input = normalize_phone_number(payload.phone_number)
+                if not normalized_input:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid phone number format")
+
+                # Find user with matching normalized phone
+                all_users = self.db.query(User).all()
+                user = None
+                for u in all_users:
+                    if u.phone_number and normalize_phone_number(u.phone_number) == normalized_input:
+                        user = u
+                        break
 
             if not user:
                 raise HTTPException(
@@ -162,14 +175,25 @@ class AuthenticationView:
 
     @router.post("/login/phone/")
     async def phone_login_request(self, payload: schemas.PhoneLoginRequest):
+        from app.authentication.utils import normalize_phone_number
+
         user = service_locator.account_service.get_user_by_phone(
             self.db, payload.phone_number.strip())
         if not user:
+            # Normalize phone number before storing
+            normalized_phone = normalize_phone_number(
+                payload.phone_number.strip())
+            if not normalized_phone:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid phone number format"
+                )
+
             user = service_locator.general_service.create_data(
                 self.db,
                 User,
                 {
-                    "phone_number": payload.phone_number,
+                    "phone_number": normalized_phone,
                     "is_active": False,
                     "role": User.Role.USER,
                 },
