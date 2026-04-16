@@ -1,3 +1,5 @@
+from fastapi.responses import RedirectResponse
+from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi import APIRouter, HTTPException, Request, Depends, status
 import requests
@@ -148,8 +150,10 @@ class PaymentView:
 async def payment_redirect(request: Request, payment_id: str, db: Session = Depends(get_db)):
     try:
         reference = request.query_params.get("reference")
+
         payment = service_locator.general_service.get_data_by_id(
-            db=db, key=payment_id, model=Payment)
+            db=db, key=payment_id, model=Payment
+        )
         if not payment:
             raise HTTPException(status_code=404, detail="Payment not found")
 
@@ -157,8 +161,12 @@ async def payment_redirect(request: Request, payment_id: str, db: Session = Depe
 
         if reference:
             service_locator.general_service.update_data(
-                db=db, key=payment.id, data={"web_page_reference": reference}, model=Payment
+                db=db,
+                key=payment.id,
+                data={"web_page_reference": reference},
+                model=Payment
             )
+
             try:
                 response = requests.get(
                     f"{settings.PAYSTACK_BASE_URL}/transaction/verify/{reference}",
@@ -172,41 +180,26 @@ async def payment_redirect(request: Request, payment_id: str, db: Session = Depe
                 if data.get("data", {}).get("status") == "success":
                     service_locator.payment_service._finalize_successful_payment(
                         db, payment)
+                    db.commit()
                     result_status = "success"
                 else:
                     service_locator.general_service.update_data(
-                        db=db, key=payment.id, data={"status": Payment.STATUS.FAILED}, model=Payment
+                        db=db,
+                        key=payment.id,
+                        data={"status": Payment.STATUS.FAILED},
+                        model=Payment
                     )
+                    db.commit()
                     result_status = "failed"
 
-                db.commit()
             except Exception as e:
                 logger.error(f"Payment verification error: {str(e)}")
                 result_status = "error"
 
-        frontend_url = settings.FRONTEND_URL or "http://localhost:3000"
-
-        html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head><title>Payment {result_status.capitalize()}</title></head>
-        <body>
-            <script>
-                const status = "{result_status}";
-                const paymentId = "{payment_id}";
-
-                // Notify parent window (iframe)
-                if (window.parent !== window) {{
-                    window.parent.postMessage({{ status, paymentId }}, "{frontend_url}");
-                }}
-
-                // Redirect after notifying
-                window.location.href = "{frontend_url}/payment/result?status={result_status}&payment_id={payment_id}";
-            </script>
-        </body>
-        </html>
-        """
-        return HTMLResponse(content=html)
+        return RedirectResponse(
+            url=f"/payments/success?status={result_status}&payment_id={payment_id}",
+            status_code=status.HTTP_302_FOUND
+        )
 
     except HTTPException:
         raise
@@ -278,3 +271,22 @@ async def paystack_callback(request: Request, db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"Callback error: {str(e)}")
         raise HTTPException(status_code=500, detail="Server error")
+
+
+templates = Jinja2Templates(directory="app/templates")
+
+
+@router.get("/success", response_class=HTMLResponse)
+def payment_success(request: Request):
+    result_status = request.query_params.get("status")
+    payment_id = request.query_params.get("payment_id")
+
+    return templates.TemplateResponse(
+        "payment_status.html",
+        {
+            "request": request,
+            "status": result_status,
+            "payment_id": payment_id,
+            "deep_link": f"{settings.DEEP_LINK}?status={result_status}&payment_id={payment_id}"
+        }
+    )

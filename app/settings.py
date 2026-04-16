@@ -95,3 +95,4 @@ ADMIN_LOGIN_PASSWORD = config.get("ADMIN_LOGIN_PASSWORD")
 
 
 API_BASE_URL = config.get("API_BASE_URL")
+DEEP_LINK = config.get("DEEP_LINK", f"{API_BASE_URL}/payments/success")

@@ -271,7 +271,7 @@ class PaymentService:
             if not payment:
                 raise ValueError(f"Payment {payment_id} not found")
 
-            redirect_url = f"{settings.API_BASE_URL}/payment/redirect/{payment_id}"
+            redirect_url = f"{settings.API_BASE_URL}/payments/redirect/{payment_id}"
             package_name = payment.subscription.package.name
 
             payload = {
