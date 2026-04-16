@@ -20,7 +20,6 @@ from app.payment.schemas import (
     BuySubscriptionRequestSchema,
     SubmitOtpRequestSchema,
     PaymentResponseSchema,
-    PaymentListResponseSchema,
 )
 from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.sqlalchemy import paginate as sa_paginate
