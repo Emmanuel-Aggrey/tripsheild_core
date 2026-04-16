@@ -47,6 +47,18 @@ class PaymentService:
             db=db, filter_values=filters, model=Payment, single_record=True
         )
 
+    def _mark_payment_failed(self, db, payment: Payment, reason: str = None) -> None:
+        update = {"status": Payment.STATUS.FAILED}
+        if reason:
+            update["failure_reason"] = reason
+        self.service_locator.general_service.update_data(
+            db=db, key=payment.id, data=update, model=Payment
+        )
+        self.service_locator.general_service.update_data(
+            db=db, key=payment.subscription_id, model=Subscription,
+            data={"payment_status": Subscription.PAYMENT_STATUS.FAILED}
+        )
+
     def _finalize_successful_payment(self, db, payment: Payment) -> None:
         self.service_locator.general_service.update_data(
             db=db, key=payment.id,
@@ -129,12 +141,7 @@ class PaymentService:
                     db.refresh(payment)
                 except Exception as e:
                     logger.error(f"Paystack initiation failed: {e}")
-                    self.service_locator.general_service.update_data(
-                        db=db, key=payment.id,
-                        data={"status": Payment.STATUS.FAILED,
-                              "failure_reason": str(e)},
-                        model=Payment
-                    )
+                    self._mark_payment_failed(db, payment, str(e))
                     db.commit()
                     raise
 
@@ -168,11 +175,7 @@ class PaymentService:
                             model=Payment
                         )
                 else:
-                    self.service_locator.general_service.update_data(
-                        db=db, key=payment.id,
-                        data={"status": Payment.STATUS.FAILED},
-                        model=Payment
-                    )
+                    self._mark_payment_failed(db, payment)
 
                 self.service_locator.general_service.update_data(
                     db=db, key=payment.id,
@@ -196,8 +199,16 @@ class PaymentService:
             raise
 
     def submit_otp(self, db: Session, subscription_id: str, otp: str, user_id: str) -> Payment:
-        payment = self._get_payment(
-            db, subscription_id=UUID(subscription_id), user_id=user_id)
+        payment = (
+            db.query(Payment)
+            .filter(
+                Payment.subscription_id == UUID(subscription_id),
+                Payment.user_id == user_id,
+                Payment.status == Payment.STATUS.ONGOING,
+            )
+            .order_by(Payment.created_at.desc())
+            .first()
+        )
         if not payment:
             raise ValueError(
                 f"Payment for subscription {subscription_id} not found")
@@ -227,8 +238,12 @@ class PaymentService:
                 update_data["status"] = Payment.STATUS.FAILED
                 update_data["failure_reason"] = paystack_response.get(
                     "message", "OTP verification failed")
+                self._mark_payment_failed(
+                    db, payment,
+                    paystack_response.get("message", "OTP verification failed")
+                )
                 self.service_locator.general_service.update_data(
-                    db=db, key=payment.id, data=update_data, model=Payment
+                    db=db, key=payment.id, data={"payment_metadata": update_data["payment_metadata"]}, model=Payment
                 )
 
             db.commit()
@@ -271,7 +286,7 @@ class PaymentService:
             if not payment:
                 raise ValueError(f"Payment {payment_id} not found")
 
-            redirect_url = f"{settings.API_BASE_URL}/payment/redirect/{payment_id}"
+            redirect_url = f"{settings.API_BASE_URL}/payments/redirect/{payment_id}"
             package_name = payment.subscription.package.name
 
             payload = {
@@ -297,7 +312,8 @@ class PaymentService:
             response = self._make_request("POST", "page", payload)
 
             if response.get("status") is True:
-                payment_link = self.get_paystack_payment_url(
+                page_data = response.get("data", {})
+                payment_link = page_data.get("url") or self.get_paystack_payment_url(
                     db, str(payment.id), str(user_id))
                 self.service_locator.general_service.update_data(
                     db=db, key=payment.id,

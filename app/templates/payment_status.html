@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Payment Status</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto;
+            background: #f4f6f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .card {
+            background: #fff;
+            width: 90%;
+            max-width: 420px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            text-align: center;
+            padding: 40px 25px;
+        }
+
+        .icon-wrapper {
+            width: 70px;
+            height: 70px;
+            margin: 0 auto 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .icon-wrapper.success { background: rgba(22, 163, 74, 0.1); }
+        .icon-wrapper.failed  { background: rgba(220, 38, 38, 0.1); }
+        .icon-wrapper.pending { background: rgba(234, 179, 8, 0.1); }
+        .icon-wrapper.error   { background: rgba(107, 114, 128, 0.1); }
+
+        .icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .icon.success { background: #16a34a; }
+        .icon.failed  { background: #dc2626; }
+        .icon.pending { background: #eab308; }
+        .icon.error   { background: #6b7280; }
+
+        h2 {
+            margin: 10px 0;
+            font-size: 20px;
+            color: #111827;
+        }
+
+        p {
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 14px 24px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 500;
+            color: #fff;
+        }
+
+        .btn.success { background: #0f172a; }
+        .btn.failed  { background: #dc2626; }
+        .btn.pending { background: #eab308; }
+        .btn.error   { background: #6b7280; }
+
+        .btn:hover { opacity: 0.9; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+
+    {% if status == 'success' %}
+        <div class="icon-wrapper success">
+            <div class="icon success">✓</div>
+        </div>
+        <h2>Policy purchased successfully</h2>
+        <p>You have successfully purchased a policy to cover your upcoming trip.</p>
+        <a href="{{ deep_link }}" class="btn success">View policy</a>
+
+    {% elif status == 'failed' %}
+        <div class="icon-wrapper failed">
+            <div class="icon failed">✗</div>
+        </div>
+        <h2>Payment failed</h2>
+        <p>Your payment could not be processed. Please try again.</p>
+        <a href="{{ deep_link }}" class="btn failed">Try again</a>
+
+    {% elif status == 'pending' %}
+        <div class="icon-wrapper pending">
+            <div class="icon pending">⏳</div>
+        </div>
+        <h2>Payment pending</h2>
+        <p>Your payment is being processed. We'll notify you once it's confirmed.</p>
+        <a href="{{ deep_link }}" class="btn pending">Check status</a>
+
+    {% else %}
+        <div class="icon-wrapper error">
+            <div class="icon error">!</div>
+        </div>
+        <h2>Something went wrong</h2>
+        <p>An unexpected error occurred. Please contact support if the issue persists.</p>
+        <a href="{{ deep_link }}" class="btn error">Go back</a>
+
+    {% endif %}
+
+</div>
+
+</body>
+</html>

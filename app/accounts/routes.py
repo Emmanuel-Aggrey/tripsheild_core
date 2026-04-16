@@ -36,7 +36,9 @@ class AccountView:
 
     @router.patch("/{id}/", response_model=UserResponseSchema)
     async def update_profile(self, id: str, payload: UserProfileUpdateSchema):
-      
+        # Allow "me" as shorthand for current user
+        if id == "me":
+            id = str(self.current_user.id)
 
         update_data = payload.model_dump(exclude_unset=True)
 

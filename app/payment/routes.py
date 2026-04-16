@@ -1,3 +1,5 @@
+from fastapi.responses import RedirectResponse
+from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi import APIRouter, HTTPException, Request, Depends, status
 import requests
@@ -18,7 +20,10 @@ from app.payment.schemas import (
     BuySubscriptionRequestSchema,
     SubmitOtpRequestSchema,
     PaymentResponseSchema,
+    PaymentListResponseSchema,
 )
+from fastapi_pagination import Page, Params
+from fastapi_pagination.ext.sqlalchemy import paginate as sa_paginate
 from uuid import UUID
 
 logger = logging.getLogger(__name__)
@@ -51,7 +56,6 @@ class PaymentView:
             )
 
         try:
-
             payment = service_locator.payment_service.create(
                 db=self.db,
                 user_id=user_id,
@@ -78,11 +82,21 @@ class PaymentView:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
+    @router.get("/", response_model=Page[PaymentResponseSchema])
+    def list_payments(self, params: Params = Depends()):
+        queryset = self.db.query(Payment).filter(
+            Payment.user_id == str(self.current_user.id)
+        ).order_by(Payment.created_at.desc())
+        return sa_paginate(self.db, queryset, params)
+
     @router.post("/{subscription_id}/verify/", response_model=PaymentResponseSchema)
     def verify_payment(self, subscription_id: UUID):
         subscription: Subscription = service_locator.general_service.get_data_by_id(
             db=self.db, key=subscription_id, model=Subscription
         )
+        if not subscription or str(subscription.user_id) != str(self.current_user.id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
         if subscription.payment_status == Subscription.PAYMENT_STATUS.PAID:
             raise HTTPException(
@@ -126,18 +140,20 @@ class PaymentView:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-    @router.get("/{subscription_id}/", response_model=PaymentResponseSchema)
-    def get_payment(self, subscription_id: UUID):
+    @router.get("/{id}/", response_model=PaymentResponseSchema)
+    def get_payment(self, id: UUID):
+        user_id = str(self.current_user.id)
+        # Try by payment ID first, then by subscription ID
         payment = (
             self.db.query(Payment)
-            .filter(
-                Payment.subscription_id == subscription_id,
-                Payment.user_id == str(self.current_user.id),
-            )
+            .filter(Payment.id == id, Payment.user_id == user_id)
+            .first()
+        ) or (
+            self.db.query(Payment)
+            .filter(Payment.subscription_id == id, Payment.user_id == user_id)
             .order_by(Payment.created_at.desc())
             .first()
         )
-
         if not payment:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
@@ -148,17 +164,23 @@ class PaymentView:
 async def payment_redirect(request: Request, payment_id: str, db: Session = Depends(get_db)):
     try:
         reference = request.query_params.get("reference")
+
         payment = service_locator.general_service.get_data_by_id(
-            db=db, key=payment_id, model=Payment)
+            db=db, key=payment_id, model=Payment
+        )
         if not payment:
             raise HTTPException(status_code=404, detail="Payment not found")
 
-        result_status = "pending"
+        result_status = "missing_reference"
 
         if reference:
             service_locator.general_service.update_data(
-                db=db, key=payment.id, data={"web_page_reference": reference}, model=Payment
+                db=db,
+                key=payment.id,
+                data={"web_page_reference": reference},
+                model=Payment
             )
+
             try:
                 response = requests.get(
                     f"{settings.PAYSTACK_BASE_URL}/transaction/verify/{reference}",
@@ -172,41 +194,22 @@ async def payment_redirect(request: Request, payment_id: str, db: Session = Depe
                 if data.get("data", {}).get("status") == "success":
                     service_locator.payment_service._finalize_successful_payment(
                         db, payment)
+                    db.commit()
                     result_status = "success"
                 else:
-                    service_locator.general_service.update_data(
-                        db=db, key=payment.id, data={"status": Payment.STATUS.FAILED}, model=Payment
-                    )
+                    service_locator.payment_service._mark_payment_failed(
+                        db, payment)
+                    db.commit()
                     result_status = "failed"
 
-                db.commit()
             except Exception as e:
                 logger.error(f"Payment verification error: {str(e)}")
                 result_status = "error"
 
-        frontend_url = settings.FRONTEND_URL or "http://localhost:3000"
-
-        html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head><title>Payment {result_status.capitalize()}</title></head>
-        <body>
-            <script>
-                const status = "{result_status}";
-                const paymentId = "{payment_id}";
-
-                // Notify parent window (iframe)
-                if (window.parent !== window) {{
-                    window.parent.postMessage({{ status, paymentId }}, "{frontend_url}");
-                }}
-
-                // Redirect after notifying
-                window.location.href = "{frontend_url}/payment/result?status={result_status}&payment_id={payment_id}";
-            </script>
-        </body>
-        </html>
-        """
-        return HTMLResponse(content=html)
+        return RedirectResponse(
+            url=f"/payments/success?status={result_status}&payment_id={payment_id}",
+            status_code=status.HTTP_302_FOUND
+        )
 
     except HTTPException:
         raise
@@ -264,9 +267,7 @@ async def paystack_callback(request: Request, db: Session = Depends(get_db)):
             service_locator.payment_service._finalize_successful_payment(
                 db, payment)
         else:
-            service_locator.general_service.update_data(
-                db=db, key=payment.id, data={"status": Payment.STATUS.FAILED}, model=Payment
-            )
+            service_locator.payment_service._mark_payment_failed(db, payment)
 
         db.commit()
         return {"message": "Processed", "payment_id": str(payment.id)}
@@ -278,3 +279,22 @@ async def paystack_callback(request: Request, db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"Callback error: {str(e)}")
         raise HTTPException(status_code=500, detail="Server error")
+
+
+templates = Jinja2Templates(directory="app/templates")
+
+
+@router.get("/success", response_class=HTMLResponse)
+def payment_success(request: Request):
+    result_status = request.query_params.get("status")
+    payment_id = request.query_params.get("payment_id")
+
+    return templates.TemplateResponse(
+        "payment_status.html",
+        {
+            "request": request,
+            "status": result_status,
+            "payment_id": payment_id,
+            "deep_link": f"{settings.DEEP_LINK}?status={result_status}&payment_id={payment_id}"
+        }
+    )

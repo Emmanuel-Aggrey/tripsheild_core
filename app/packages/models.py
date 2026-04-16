@@ -39,8 +39,6 @@ class Package(BaseModel):
 
     # Relationships
     subscriptions = relationship("Subscription", back_populates="package")
-    features = relationship(
-        "Feature", secondary=package_features, back_populates="packages")
 
 
 class Subscription(BaseModel):

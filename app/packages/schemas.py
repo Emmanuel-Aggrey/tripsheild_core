@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
 from typing import Optional, List
 from uuid import UUID
 from decimal import Decimal
@@ -114,6 +114,12 @@ class SubscriptionCreateSchema(BaseModel):
     end_date: Optional[datetime] = None
     transport_type_id: UUID
     beneficiary_name: str
+
+    @model_validator(mode="after")
+    def validate_dates(self):
+        if self.start_date and self.end_date and self.start_date >= self.end_date:
+            raise ValueError("start_date must be before end_date")
+        return self
 
 
 class SubscriptionResponseSchema(BaseSchema):

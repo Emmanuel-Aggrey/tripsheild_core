@@ -5,6 +5,7 @@ from app.test.base import BaseTest
 from app.accounts.factories import UserFactory
 from app.packages.models import Package, Subscription
 from app.payment.models import Payment
+from app.literal.models import TransportType
 
 
 class TestPaymentFlow(BaseTest):
@@ -24,14 +25,29 @@ class TestPaymentFlow(BaseTest):
         db.refresh(package)
         return package
 
+    def _create_transport_type(self) -> TransportType:
+        db = self.get_db()
+        transport_type = TransportType(
+            name=f"Air-{uuid.uuid4().hex[:8]}",
+            description="Air transport",
+            is_active=True,
+        )
+        db.add(transport_type)
+        db.commit()
+        db.refresh(transport_type)
+        return transport_type
+
     def _create_subscription(self, user_id: str, package_id) -> Subscription:
         db = self.get_db()
+        transport_type = self._create_transport_type()
         subscription = Subscription(
             user_id=user_id,
             package_id=package_id,
             status=Subscription.STATUS.PENDING,
             payment_status=Subscription.PAYMENT_STATUS.PENDING,
             auto_renew=False,
+            transport_type_id=transport_type.id,
+            beneficiary_name="Test User",
         )
         db.add(subscription)
         db.commit()
@@ -41,31 +57,37 @@ class TestPaymentFlow(BaseTest):
     def test_buy_subscription_and_list_payments(self):
         user = UserFactory(email=f"user-{uuid.uuid4().hex[:8]}@example.com")
         package = self._create_package()
+        transport_type = self._create_transport_type()
         self.force_authenticate(user)
 
-        buy_response = self.client.post(
-            "/payment/buy/",
+        # Create subscription first
+        sub_response = self.client.post(
+            "/subscriptions/",
             json={
                 "package_id": str(package.id),
-                "payment_method": "bank",
-                "create_web_link": False,
+                "transport_type_id": str(transport_type.id),
+                "beneficiary_name": "Test User",
             },
         )
-        assert buy_response.status_code == status.HTTP_201_CREATED, buy_response.text
-        db = self.get_db()
-        latest_payment = db.query(Payment).filter(
-            Payment.user_id == str(user.id)
-        ).order_by(Payment.created_at.desc()).first()
-        assert latest_payment is not None
-        payment_id = str(latest_payment.id)
+        assert sub_response.status_code == status.HTTP_201_CREATED, sub_response.text
+        subscription = sub_response.json()
 
-        list_response = self.client.get("/payment/my-payments/")
+        # Create payment for subscription
+        payment_response = self.client.post(
+            f"/payments/{subscription['id']}/",
+            json={"payment_method": "bank", "create_web_link": False},
+        )
+        assert payment_response.status_code == status.HTTP_201_CREATED, payment_response.text
+        payment = payment_response.json()
+        payment_id = payment["id"]
+
+        list_response = self.client.get("/payments/")
         assert list_response.status_code == status.HTTP_200_OK, list_response.text
         data = list_response.json()
         assert data["total"] >= 1
         assert any(p["id"] == payment_id for p in data["items"])
 
-        get_response = self.client.get(f"/payment/{payment_id}/")
+        get_response = self.client.get(f"/payments/{payment_id}/")
         assert get_response.status_code == status.HTTP_200_OK, get_response.text
         assert get_response.json()["id"] == payment_id
 
@@ -76,8 +98,8 @@ class TestPaymentFlow(BaseTest):
         self.force_authenticate(user)
 
         response = self.client.post(
-            "/payment/",
-            json={"subscription_id": str(subscription.id), "payment_method": "bank"},
+            f"/payments/{subscription.id}/",
+            json={"payment_method": "bank"},
         )
         assert response.status_code == status.HTTP_201_CREATED, response.text
         assert response.json()["status"] == Payment.STATUS.ONGOING
@@ -105,6 +127,6 @@ class TestPaymentFlow(BaseTest):
 
         self.force_authenticate(other)
         response = self.client.post(
-            f"/payment/{payment.id}/verify/",
+            f"/payments/{subscription.id}/verify/",
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN, response.text
