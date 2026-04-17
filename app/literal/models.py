@@ -19,3 +19,5 @@ class TransportType(Literal):
 
     subscriptions = relationship(
         "Subscription", back_populates="transport_type")
+    packages = relationship(
+        "Package", back_populates="transport_type")

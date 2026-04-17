@@ -35,10 +35,14 @@ class Package(BaseModel):
         PG_ENUM(*STATUS.ALL, name='package_status'),
         nullable=False,
         default=STATUS.ACTIVE
+
     )
+    transport_type_id = Column(PG_UUID, ForeignKey("transport_types.id"))
 
     # Relationships
     subscriptions = relationship("Subscription", back_populates="package")
+    transport_type = relationship(
+        "TransportType", back_populates="packages")
 
 
 class Subscription(BaseModel):
@@ -89,6 +93,7 @@ class Subscription(BaseModel):
     )
     start_date = Column(DateTime(timezone=True), nullable=True)
     end_date = Column(DateTime(timezone=True), nullable=True)
+    travel_date = Column(DateTime(timezone=True), nullable=True)
     auto_renew = Column(Boolean, default=False, nullable=False)
     location_from = Column(String, nullable=True)
     location_to = Column(String, nullable=True)

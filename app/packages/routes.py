@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Query, Depends, HTTPException, status
 from fastapi_utils.cbv import cbv
 from typing import Optional
+from uuid import UUID
 from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.sqlalchemy import paginate as sa_paginate
 from app.core.dependency_injection import service_locator
@@ -11,6 +12,8 @@ from .schemas import (
     SubscriptionResponseSchema,
     SubscriptionCreateSchema,
     SubscriptionUpdateSchema,
+    SubscriptionCreateWithPaymentSchema,
+    SubscriptionWithPaymentResponseSchema,
 )
 from .models import Package, Subscription
 from app.dependencies import get_db
@@ -39,6 +42,48 @@ def _do_update_subscription(db: Session, id: str, user_id: str, data: Subscripti
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+def _do_subscribe(db: Session, user, payload: SubscriptionCreateWithPaymentSchema):
+    user_id = str(user.id)
+    sub_data = payload.model_dump(exclude={"payment"})
+    sub_data["user_id"] = user_id
+
+    try:
+        subscription = service_locator.package_service.subscribe_to_package(
+            db=db, data=sub_data
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    if payload.payment is None:
+        return subscription, None
+
+    p = payload.payment
+    try:
+        payment = service_locator.payment_service.create(
+            db=db,
+            user_id=user_id,
+            subscription_id=subscription.id,
+            payment_method=p.payment_method.value,
+            phone_number=p.phone_number,
+            provider=p.provider.value if p.provider else None,
+            email=str(p.email) if p.email else None,
+            skip_ussd=p.create_web_link,
+        )
+        if p.create_web_link:
+            service_locator.payment_service.create_payment_link(
+                db=db,
+                payment_id=str(payment.id),
+                user_id=user.id,
+                customer_name=user.first_name + " " + user.last_name,
+            )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    return subscription, payment
 
 
 @cbv(packages_router)
@@ -149,6 +194,16 @@ class PackageView:
                 status_code=status.HTTP_404_NOT_FOUND, detail="Package not found")
         return {"message": "Package deleted successfully"}
 
+    @packages_router.post("/{package_id}/subscribe/", response_model=SubscriptionWithPaymentResponseSchema,
+                          status_code=status.HTTP_201_CREATED)
+    def subscribe_via_package(self, package_id: UUID, payload: SubscriptionCreateWithPaymentSchema):
+        subscription, payment = _do_subscribe(
+            self.db, self.current_user, payload)
+        result = SubscriptionWithPaymentResponseSchema.model_validate(
+            subscription)
+        result.payment = payment
+        return result
+
 
 @cbv(subscriptions_router)
 class SubscriptionView:
@@ -182,19 +237,12 @@ class SubscriptionView:
     def update_subscription(self, id: str, data: SubscriptionUpdateSchema):
         return _do_update_subscription(self.db, id, str(self.current_user.id), data)
 
-    @subscriptions_router.post("/", response_model=SubscriptionResponseSchema,
+    @subscriptions_router.post("/", response_model=SubscriptionWithPaymentResponseSchema,
                                status_code=status.HTTP_201_CREATED)
-    def subscribe_to_package(self, payload: SubscriptionCreateSchema):
-
-        user_id = str(self.current_user.id)
-
-        try:
-            return service_locator.package_service.subscribe_to_package(
-                db=self.db, data={
-                    **payload.model_dump(),
-                    "user_id": user_id,
-                }
-            )
-        except ValueError as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    def subscribe_to_package(self, payload: SubscriptionCreateWithPaymentSchema):
+        subscription, payment = _do_subscribe(
+            self.db, self.current_user, payload)
+        result = SubscriptionWithPaymentResponseSchema.model_validate(
+            subscription)
+        result.payment = payment
+        return result

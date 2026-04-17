@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator, EmailStr
 from typing import Optional, List
 from uuid import UUID
 from decimal import Decimal
@@ -6,6 +6,7 @@ from datetime import datetime
 from enum import Enum
 from app.core.schema import BaseSchema
 from app.literal.schemas import TransportTypeSchema
+from app.payment.schemas import PaymentResponseSchema, PaymentMethodEnum, PaymentProviderEnum
 
 
 class PackageStatusEnum(str, Enum):
@@ -81,6 +82,7 @@ class PackageResponseSchema(BaseModel):
     features: List[FeatureInPackageSchema] = []
     created_at: datetime
     updated_at: datetime
+    transport_type: Optional[TransportTypeSchema] = None
 
 
 class PackageListResponseSchema(BaseModel):
@@ -112,14 +114,15 @@ class SubscriptionCreateSchema(BaseModel):
     data: Optional[dict] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
-    transport_type_id: UUID
+    transport_type_id: Optional[UUID] = None
     beneficiary_name: str
+    travel_date: Optional[datetime] = None
 
-    @model_validator(mode="after")
-    def validate_dates(self):
-        if self.start_date and self.end_date and self.start_date >= self.end_date:
-            raise ValueError("start_date must be before end_date")
-        return self
+    # @model_validator(mode="after")
+    # def validate_dates(self):
+    #     if self.start_date and self.end_date and self.start_date >= self.end_date:
+    #         raise ValueError("start_date must be before end_date")
+    #     return self
 
 
 class SubscriptionResponseSchema(BaseSchema):
@@ -135,6 +138,7 @@ class SubscriptionResponseSchema(BaseSchema):
     user_id: UUID
     package: Optional[PackageResponseSchema] = None
     transport_type: Optional[TransportTypeSchema] = None
+    travel_date: Optional[datetime] = None
 
 
 class SubscriptionListResponseSchema(BaseModel):
@@ -153,3 +157,19 @@ class SubscriptionUpdateSchema(BaseModel):
         if v != SubscriptionStatusEnum.CANCELLED:
             raise ValueError("Only cancellation is allowed")
         return v
+
+
+class SubscriptionPaymentSchema(BaseModel):
+    payment_method: PaymentMethodEnum = PaymentMethodEnum.BANK
+    phone_number: Optional[str] = None
+    provider: Optional[PaymentProviderEnum] = None
+    email: Optional[EmailStr] = None
+    create_web_link: bool = True
+
+
+class SubscriptionCreateWithPaymentSchema(SubscriptionCreateSchema):
+    payment: Optional[SubscriptionPaymentSchema] = None
+
+
+class SubscriptionWithPaymentResponseSchema(SubscriptionResponseSchema):
+    payment: Optional[PaymentResponseSchema] = None

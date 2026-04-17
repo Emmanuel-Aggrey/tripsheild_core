@@ -108,7 +108,6 @@ class PaymentService:
                 "transaction_id": transaction_id,
                 "payment_metadata": {
                     "phone_number": phone_number,
-                    "email": email,
                     "package_name": package.name,
                 }
             }
@@ -278,8 +277,7 @@ class PaymentService:
         return self._make_request("POST", "charge/submit_otp", {"otp": otp, "reference": reference})
 
     def create_payment_link(self, db: Session, payment_id: str, user_id: UUID,
-                            description: str = None, customer_email: str = None,
-                            customer_name: str = None) -> dict:
+                            description: str = None, customer_name: str = None) -> dict:
 
         try:
             payment = self._get_payment(db, id=UUID(payment_id))
@@ -304,8 +302,6 @@ class PaymentService:
                     "user_id": str(user_id),
                 }
             }
-            if customer_email:
-                payload["customer_email"] = customer_email
             if customer_name:
                 payload["customer_name"] = customer_name
 

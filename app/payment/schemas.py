@@ -25,16 +25,16 @@ class PaymentStatusEnum(str, Enum):
 
 class BuySubscriptionRequestSchema(BaseModel):
     package_id: Optional[UUID] = None
-    payment_method: PaymentMethodEnum = PaymentMethodEnum.BANK
+    payment_method: PaymentMethodEnum = PaymentMethodEnum.MOMO
     phone_number: Optional[str] = None
     provider: Optional[PaymentProviderEnum] = None
-    email: Optional[EmailStr] = None
+    email: Optional[EmailStr] = "info@kayaktechgroup.com"
     create_web_link: bool = True
 
 
 class InitiatePaymentRequestSchema(BaseModel):
     subscription_id: UUID
-    payment_method: PaymentMethodEnum = PaymentMethodEnum.BANK
+    payment_method: PaymentMethodEnum = PaymentMethodEnum.MOMO
     phone_number: Optional[str] = None
     provider: Optional[PaymentProviderEnum] = None
     email: Optional[EmailStr] = None

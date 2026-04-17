@@ -62,7 +62,7 @@ class PaymentView:
                 payment_method=payload.payment_method.value,
                 phone_number=payload.phone_number,
                 provider=payload.provider.value if payload.provider else None,
-                email=str(payload.email or self.current_user.email),
+                email=str(payload.email) if payload.email else None,
                 skip_ussd=payload.create_web_link,
             )
 
@@ -71,8 +71,6 @@ class PaymentView:
                     db=self.db,
                     payment_id=str(payment.id),
                     user_id=self.current_user.id,
-                    customer_email=str(
-                        payload.email or self.current_user.email),
                     customer_name=self.current_user.first_name + " " + self.current_user.last_name,
                 )
 

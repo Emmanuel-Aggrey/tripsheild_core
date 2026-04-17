@@ -39,18 +39,6 @@ class PackageService:
         ):
             raise ValueError("Package not found or inactive")
 
-        # Check if user has an unpaid subscription for this package (regardless of status)
-        unpaid_subscription = db.query(Subscription).filter(
-            Subscription.user_id == data["user_id"],
-            Subscription.package_id == data["package_id"],
-            Subscription.payment_status != Subscription.PAYMENT_STATUS.PAID,
-            Subscription.status != Subscription.STATUS.CANCELLED
-        ).first()
-
-        if unpaid_subscription:
-            raise ValueError(
-                "You have an unpaid subscription for this package. Please complete payment first.")
-
         return self.service_locator.general_service.create_data(
             db=db, model=Subscription, data=data
         )
