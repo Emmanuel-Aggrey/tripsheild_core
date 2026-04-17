@@ -10,7 +10,6 @@ from .schemas import (
     PackageUpdateSchema,
     PackageResponseSchema,
     SubscriptionResponseSchema,
-    SubscriptionCreateSchema,
     SubscriptionUpdateSchema,
     SubscriptionCreateWithPaymentSchema,
     SubscriptionWithPaymentResponseSchema,

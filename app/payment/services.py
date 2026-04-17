@@ -333,17 +333,18 @@ class PaymentService:
             raise
 
     def get_paystack_payment_url(self, db: Session, slug: str, user_id: str) -> str:
-
         user: User = self.service_locator.general_service.filter_data(
             db=db, filter_values={"id": user_id}, model=User, single_record=True
         )
         params = {
-            "email": user.email,
-            "first_name": user.first_name,
-            "last_name": user.last_name,
+            k: v for k, v in {
+                "email": user.email or "info@kayaktechgroup.com",
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+            }.items() if v
         }
         base_url = f"https://paystack.shop/pay/{slug}"
-        return f"{base_url}?{urlencode(params)}" if params.get("email") else base_url
+        return f"{base_url}?{urlencode(params)}" if params else base_url
 
     def get_payment(self, db: Session, payment_id: str, user_id: str) -> Optional[Payment]:
 
