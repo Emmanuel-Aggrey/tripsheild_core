@@ -234,6 +234,7 @@ class SubscriptionView:
 
     @subscriptions_router.patch("/{id}/", response_model=SubscriptionResponseSchema)
     def update_subscription(self, id: str, data: SubscriptionUpdateSchema):
+
         return _do_update_subscription(self.db, id, str(self.current_user.id), data)
 
     @subscriptions_router.post("/", response_model=SubscriptionWithPaymentResponseSchema,
