@@ -34,6 +34,7 @@ class PackageBaseSchema(BaseModel):
         None, max_digits=12, decimal_places=2)
     is_active: bool = True
     status: PackageStatusEnum = PackageStatusEnum.ACTIVE
+    image: Optional[str] = None
 
 
 class PackageCreateSchema(PackageBaseSchema):
@@ -57,6 +58,7 @@ class PackageUpdateSchema(BaseModel):
         None, max_digits=12, decimal_places=2)
     is_active: Optional[bool] = None
     status: Optional[PackageStatusEnum] = None
+    image: Optional[str] = None
     feature_ids: Optional[List[UUID]] = Field(
         None, description="List of feature IDs (replaces existing)")
 
@@ -83,6 +85,7 @@ class PackageResponseSchema(BaseModel):
     created_at: datetime
     updated_at: datetime
     transport_type: Optional[TransportTypeSchema] = None
+    image: Optional[str] = None
 
 
 class PackageListResponseSchema(BaseModel):
@@ -117,12 +120,6 @@ class SubscriptionCreateSchema(BaseModel):
     transport_type_id: Optional[UUID] = None
     beneficiary_name: str
     travel_date: Optional[datetime] = None
-
-    # @model_validator(mode="after")
-    # def validate_dates(self):
-    #     if self.start_date and self.end_date and self.start_date >= self.end_date:
-    #         raise ValueError("start_date must be before end_date")
-    #     return self
 
 
 class SubscriptionResponseSchema(BaseSchema):

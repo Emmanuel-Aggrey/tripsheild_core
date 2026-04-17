@@ -38,6 +38,7 @@ class Package(BaseModel):
 
     )
     transport_type_id = Column(PG_UUID, ForeignKey("transport_types.id"))
+    image = Column(Text, nullable=True)
 
     # Relationships
     subscriptions = relationship("Subscription", back_populates="package")
