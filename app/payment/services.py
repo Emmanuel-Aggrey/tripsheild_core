@@ -11,7 +11,7 @@ import logging
 from urllib.parse import urlencode
 from app.accounts.models import User
 from sqlalchemy.orm import Session
-# from dd
+
 logger = logging.getLogger(__name__)
 
 
