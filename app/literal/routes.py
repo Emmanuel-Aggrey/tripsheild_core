@@ -2,7 +2,7 @@ from fastapi import APIRouter,  Depends
 
 from fastapi_utils.cbv import cbv
 from .schemas import AllLiteralsResponseSchema, LiteralBaseSchema
-from .models import TransportType
+from .models import TransportType, TypeOfIncident
 from app.dependencies import get_db
 from app.accounts.schemas import UserSchema
 from sqlalchemy.orm import Session
@@ -24,7 +24,8 @@ class LiteralView:
     @literal_router.get("/all/", response_model=AllLiteralsResponseSchema)
     def get_all_literals(self):
         return AllLiteralsResponseSchema(
-            transport_types=self.db.query(TransportType).all()
+            transport_types=self.db.query(TransportType).all(),
+            type_of_incidents=self.db.query(TypeOfIncident).all(),
         )
 
     @literal_router.get("/{category}/", response_model=list[LiteralBaseSchema])
@@ -35,5 +36,6 @@ class LiteralView:
     def category_to_model(self, category: LiteralCategory):
         mapping = {
             LiteralCategory.TRANSPORT_TYPES: TransportType,
+            LiteralCategory.TYPE_OF_INCIDENTS: TypeOfIncident,
         }
         return mapping.get(category)

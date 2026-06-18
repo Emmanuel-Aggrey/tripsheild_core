@@ -3,7 +3,9 @@ from decimal import Decimal
 from enum import Enum
 from typing import Optional, List
 from uuid import UUID
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
+from app.literal.schemas import TypeOfIncidentSchema
+from app.storage.schemas import StorageResponse
 
 
 class ClaimStatusEnum(str, Enum):
@@ -14,10 +16,14 @@ class ClaimStatusEnum(str, Enum):
 
 
 class ClaimCreateSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     subscription_id: UUID
     claim_amount: Decimal = Field(..., max_digits=12, decimal_places=2)
     reason: str = Field(..., min_length=5)
     incident_date: Optional[datetime] = None
+    type_of_incident_id: Optional[UUID] = None
+    location_of_incidence: Optional[str] = None
+    storages: Optional[List[UUID]] = None
 
 
 class ClaimStatusUpdateSchema(BaseModel):
@@ -26,6 +32,7 @@ class ClaimStatusUpdateSchema(BaseModel):
 
 
 class ClaimResponseSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: UUID
     user_id: str
     subscription_id: UUID
@@ -36,6 +43,9 @@ class ClaimResponseSchema(BaseModel):
     reviewer_note: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+    type_of_incident: Optional[TypeOfIncidentSchema] = None
+    location_of_incidence: Optional[str] = None
+    storages: Optional[List[StorageResponse]] = None
 
 
 class ClaimListResponseSchema(BaseModel):

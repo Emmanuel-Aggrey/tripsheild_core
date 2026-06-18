@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator, EmailStr
+from pydantic import BaseModel, Field, ConfigDict, field_validator, EmailStr
 from typing import Optional, List
 from uuid import UUID
 from decimal import Decimal

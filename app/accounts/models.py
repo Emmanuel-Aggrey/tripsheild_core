@@ -3,6 +3,7 @@ from sqlalchemy import Boolean
 from sqlalchemy import Column
 from sqlalchemy import String
 from sqlalchemy.dialects.postgresql import ENUM as PG_ENUM
+from sqlalchemy.orm import relationship
 
 
 class User(BaseModel):
@@ -32,3 +33,5 @@ class User(BaseModel):
     occupation = Column(String, nullable=True)
     ghana_card_number = Column(String, nullable=True)
     is_testing_user = Column(Boolean, default=False)
+
+    storages = relationship("Storage", back_populates="user")

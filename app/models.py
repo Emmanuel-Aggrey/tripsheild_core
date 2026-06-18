@@ -7,3 +7,4 @@ from app.packages.models import *  # noqa
 from app.payment.models import *  # noqa
 from app.features.models import *  # noqa
 from app.claims.models import *  # noqa
+from app.storage.models import *  # noqa

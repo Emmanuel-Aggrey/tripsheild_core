@@ -1,11 +1,12 @@
-from typing import Dict, Optional
+from typing import Optional
 from uuid import UUID
 import logging
 from decimal import Decimal, InvalidOperation
 from app.database import SessionLocal
 from app.claims.models import Claim
 from app.packages.models import Subscription, Package
-
+from app.claims.schemas import ClaimResponseSchema, ClaimListResponseSchema
+from app.storage.models import Storage
 logger = logging.getLogger(__name__)
 
 
@@ -14,19 +15,8 @@ class ClaimService:
         from app.core.dependency_injection import service_locator
         self.service_locator = service_locator
 
-    def _serialize_claim(self, claim: Claim) -> dict:
-        return {
-            "id": str(claim.id),
-            "user_id": claim.user_id,
-            "subscription_id": str(claim.subscription_id),
-            "claim_amount": claim.claim_amount,
-            "reason": claim.reason,
-            "incident_date": claim.incident_date.isoformat() if claim.incident_date else None,
-            "status": claim.status,
-            "reviewer_note": claim.reviewer_note,
-            "created_at": claim.created_at.isoformat() if claim.created_at else None,
-            "updated_at": claim.updated_at.isoformat() if claim.updated_at else None,
-        }
+    def _to_schema(self, claim: Claim) -> dict:
+        return ClaimResponseSchema.model_validate(claim).model_dump()
 
     def create_claim(self, user_id: str, payload: dict) -> dict:
         db = SessionLocal()
@@ -54,22 +44,31 @@ class ClaimService:
             if package and package.coverage_amount:
                 try:
                     if Decimal(str(claim_amount)) > Decimal(str(package.coverage_amount)):
-                        raise ValueError("Claim amount exceeds package coverage")
+                        raise ValueError(
+                            "Claim amount exceeds package coverage")
                 except InvalidOperation:
                     raise ValueError("Invalid claim amount")
 
-            data = {
-                "user_id": user_id,
-                "subscription_id": subscription_id,
-                "claim_amount": str(claim_amount),
-                "reason": payload.get("reason"),
-                "incident_date": payload.get("incident_date"),
-                "status": Claim.STATUS.PENDING,
-            }
+            storage_ids = payload.get("storages") or []
+            storages = [
+                self.service_locator.general_service.get_data_by_id(
+                    db=db, key=sid, model=Storage)
+                for sid in storage_ids
+            ]
+
             claim = self.service_locator.general_service.create_data(
-                db=db, model=Claim, data=data
+                db=db,
+                model=Claim,
+                data={
+                    **payload,
+                    "user_id": user_id,
+                    "claim_amount": str(claim_amount),
+                    "status": Claim.STATUS.PENDING,
+                    "storages": storages,
+                },
             )
-            return self._serialize_claim(claim)
+
+            return self._to_schema(claim)
         except Exception as e:
             db.rollback()
             logger.error(f"Failed to create claim: {e}")
@@ -88,7 +87,7 @@ class ClaimService:
             )
             if not claim:
                 return None
-            return self._serialize_claim(claim)
+            return self._to_schema(claim)
         except ValueError:
             return None
         finally:
@@ -96,7 +95,7 @@ class ClaimService:
 
     def list_claims(
         self, user_id: str, is_admin: bool = False, status: str = None, page: int = 1, limit: int = 10
-    ) -> Dict:
+    ) -> dict:
         db = SessionLocal()
         try:
             filter_values = {}
@@ -111,14 +110,15 @@ class ClaimService:
 
             total = len(claims)
             start = (page - 1) * limit
-            end = start + limit
-            paginated = claims[start:end]
-            return {
-                "claims": [self._serialize_claim(c) for c in paginated],
-                "total": total,
-                "page": page,
-                "limit": limit,
-            }
+            paginated = claims[start: start + limit]
+
+            return ClaimListResponseSchema(
+                claims=[ClaimResponseSchema.model_validate(
+                    c) for c in paginated],
+                total=total,
+                page=page,
+                limit=limit,
+            ).model_dump()
         finally:
             db.close()
 
@@ -138,7 +138,7 @@ class ClaimService:
                 data={"status": status, "reviewer_note": reviewer_note},
                 model=Claim,
             )
-            return self._serialize_claim(updated)
+            return self._to_schema(updated)
         except Exception as e:
             db.rollback()
             logger.error(f"Failed to update claim status: {e}")

@@ -14,5 +14,10 @@ class TransportTypeSchema(LiteralBaseSchema):
     pass
 
 
+class TypeOfIncidentSchema(LiteralBaseSchema):
+    pass
+
+
 class AllLiteralsResponseSchema(BaseModel):
     transport_types: Optional[list[TransportTypeSchema]] = None
+    type_of_incidents: Optional[list[TypeOfIncidentSchema]] = None

@@ -4,6 +4,18 @@ from sqlalchemy.dialects.postgresql import ENUM as PG_ENUM, UUID as PG_UUID
 from sqlalchemy.orm import relationship
 
 
+from sqlalchemy import Table
+
+claim_storages = Table(
+    "claim_storages",
+    BaseModel.metadata,
+    Column("claim_id", PG_UUID(as_uuid=True),
+           ForeignKey("claims.id"), primary_key=True),
+    Column("storage_id", PG_UUID(as_uuid=True),
+           ForeignKey("storages.id"), primary_key=True),
+)
+
+
 class Claim(BaseModel):
     class STATUS:
         PENDING = "pending"
@@ -28,4 +40,11 @@ class Claim(BaseModel):
     )
     reviewer_note = Column(Text, nullable=True)
 
+    type_of_incident_id = Column(
+        PG_UUID(as_uuid=True), ForeignKey("type_of_incidents.id"), nullable=True)
+    location_of_incidence = Column(Text, nullable=True)
+
     subscription = relationship("Subscription")
+    type_of_incident = relationship("TypeOfIncident", back_populates="claims")
+    storages = relationship(
+        "Storage", secondary=claim_storages, back_populates="claims")

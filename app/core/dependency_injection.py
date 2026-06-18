@@ -5,6 +5,7 @@ from app.packages.services import PackageService
 from app.payment.services import PaymentService
 from app.claims.services import ClaimService
 from app.core.services import CoreService
+from app.core.s3_client import S3Service
 
 
 class SERVICE_NAMES:
@@ -16,6 +17,7 @@ class SERVICE_NAMES:
     PaymentService = "payment_service"
     ClaimService = "claim_service"
     CoreService = "core_service"
+    S3Service = "s3_service"
 
 
 class ServiceLocator:
@@ -28,6 +30,7 @@ class ServiceLocator:
     payment_service: PaymentService
     claim_service: ClaimService
     core_service: CoreService
+    s3_service: S3Service
 
     def __init__(self):
         self._services = {}
@@ -58,3 +61,4 @@ service_locator.register(SERVICE_NAMES.PackageService, PackageService())
 service_locator.register(SERVICE_NAMES.PaymentService, PaymentService())
 service_locator.register(SERVICE_NAMES.ClaimService, ClaimService())
 service_locator.register(SERVICE_NAMES.CoreService, CoreService())
+service_locator.register(SERVICE_NAMES.S3Service, S3Service())

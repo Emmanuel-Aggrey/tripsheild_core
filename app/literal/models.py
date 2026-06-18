@@ -21,3 +21,10 @@ class TransportType(Literal):
         "Subscription", back_populates="transport_type")
     packages = relationship(
         "Package", back_populates="transport_type")
+
+
+class TypeOfIncident(Literal):
+
+    __tablename__ = "type_of_incidents"
+
+    claims = relationship("Claim", back_populates="type_of_incident")

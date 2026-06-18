@@ -11,7 +11,8 @@ from app.packages.models import Package, Subscription
 from app.payment.models import Payment
 from app.insuranc_records.models import InsurancRecord
 from app.claims.models import Claim
-from app.literal.models import TransportType
+from app.literal.models import TransportType, TypeOfIncident
+from app.storage.models import Storage
 
 
 class AdminAuth(AuthenticationBackend):
@@ -134,6 +135,35 @@ class TransportTypeAdmin(ModelView, model=TransportType):
     ]
 
 
+class TypeOfIncidentAdmin(ModelView, model=TypeOfIncident):
+    name = "Type Of Incident"
+    name_plural = "Type Of Incidents"
+    column_list = [
+        TransportType.id,
+        TransportType.name,
+        TransportType.description,
+        TransportType.is_active,
+
+    ]
+
+
+class StorageAdmin(ModelView, model=Storage):
+    name = "Storage"
+    name_plural = "Storages"
+    column_list = [
+        Storage.id,
+        Storage.created_by,
+        Storage.url,
+        Storage.filename,
+        Storage.file_size,
+        Storage.upload_finished_at,
+        Storage.created_at,
+        Storage.updated_at,
+
+
+    ]
+
+
 def setup_admin(app: FastAPI) -> None:
     authentication_backend = AdminAuth(
         secret_key=settings.SECRET_KEY or "change-me-in-env"
@@ -153,3 +183,5 @@ def setup_admin(app: FastAPI) -> None:
     admin.add_view(InsuranceRecordAdmin)
     admin.add_view(ClaimAdmin)
     admin.add_view(TransportTypeAdmin)
+    admin.add_view(TypeOfIncidentAdmin)
+    admin.add_view(StorageAdmin)
