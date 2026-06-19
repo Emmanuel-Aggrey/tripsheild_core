@@ -23,7 +23,7 @@ class UserRegistrationForm(BaseModel):
     email: Optional[EmailStr] = Field(
         default=None, description="Email address")
     phone_number: Optional[str] = Field(
-        default=None, min_length=10, max_length=20)
+        default=None, min_length=9, max_length=20)
     first_name: Optional[str] = Field(
         default=None, min_length=2, max_length=64)
     last_name: Optional[str] = Field(default=None, min_length=2, max_length=64)
@@ -46,7 +46,7 @@ class UserRegistrationForm(BaseModel):
 class LoginForm(BaseModel):
     email: Optional[EmailStr] = None
     phone_number: Optional[str] = Field(
-        default=None, min_length=10, max_length=20)
+        default=None, min_length=9, max_length=20)
     password: str = Field(min_length=8, max_length=64)
 
     @model_validator(mode="after")
@@ -66,13 +66,13 @@ class EmailLoginRequest(BaseModel):
 
 
 class PhoneLoginRequest(BaseModel):
-    phone_number: str = Field(min_length=10, max_length=20)
+    phone_number: str = Field(min_length=9, max_length=20)
 
 
 class VerifyLoginOtpSchema(BaseModel):
     email: Optional[EmailStr] = None
     phone_number: Optional[str] = Field(
-        default=None, min_length=10, max_length=20)
+        default=None, min_length=9, max_length=20)
     code: str = Field(min_length=4, max_length=10)
 
     @model_validator(mode="after")

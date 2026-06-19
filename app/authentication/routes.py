@@ -155,7 +155,7 @@ class AuthenticationView:
 
     @router.post("/login/email/")
     async def email_login_request(self, payload: schemas.EmailLoginRequest):
-        user = service_locator.account_service.get_user_by_email(
+        user: User = service_locator.account_service.get_user_by_email(
             self.db, payload.email.strip())
         if not user:
             user = service_locator.general_service.create_data(

@@ -37,8 +37,10 @@ def normalize_phone_number(phone_number: str) -> str:
 
     if phone.startswith("0"):
         phone = "233" + phone[1:]
+    elif len(phone) == 9:
+        phone = "233" + phone
 
-    if not phone.startswith("233"):
+    if len(phone) < 10:
         return None
 
     return "+" + phone
