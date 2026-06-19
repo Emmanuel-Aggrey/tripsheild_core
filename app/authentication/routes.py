@@ -2,8 +2,8 @@ from app.accounts.schemas import UserResponseSchema
 from app.authentication import schemas
 from app.accounts.models import User
 from app.core.dependency_injection import service_locator
-from app.authentication.utils import authenticate_user
-from app.authentication.utils import create_access_token
+from app.authentication.utils import authenticate_user, decode_refresh_token
+from app.authentication.utils import create_access_token, create_refresh_token
 from app.dependencies import get_db
 from fastapi import APIRouter
 from fastapi import Depends
@@ -147,9 +147,11 @@ class AuthenticationView:
                 detail="Account not verified",
             )
 
-        token_subject = user.email or user.phone_number
-        access_token = create_access_token(data={"sub": token_subject})
-        return schemas.Token(access_token=access_token, token_type="bearer")
+        subject = user.email or user.phone_number
+        access_token = create_access_token(data={"sub": subject})
+        refresh_token = create_refresh_token(data={"sub": subject})
+
+        return schemas.Token(access_token=access_token, refresh_token=refresh_token, token_type="bearer")
 
     @router.post("/login/email/")
     async def email_login_request(self, payload: schemas.EmailLoginRequest):
@@ -240,3 +242,18 @@ class AuthenticationView:
     @router.post("/gimme-jwt/", response_model=schemas.Token)
     async def gimme_jwt(self, form_data: schemas.EmailPasswordLoginForm) -> schemas.Token:
         return await self.email_password_login(form_data)
+
+    @router.post("/token/refresh/", response_model=schemas.Token)
+    async def refresh_token(self, payload: schemas.RefreshTokenRequest) -> schemas.Token:
+        data = decode_refresh_token(payload.refresh_token)
+        subject = data.get("sub")
+        user = service_locator.account_service.get_user_by_identifier(
+            self.db, subject)
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=401, detail="User not found or inactive")
+        return schemas.Token(
+            access_token=create_access_token(data={"sub": subject}),
+            refresh_token=create_refresh_token(data={"sub": subject}),
+            token_type="bearer",
+        )

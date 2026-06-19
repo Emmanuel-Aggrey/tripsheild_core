@@ -7,7 +7,7 @@ import re
 
 from app.accounts.schemas import UserSchema
 from app.dependencies import get_db
-from app.settings import ACCESS_TOKEN_EXPIRE_MINUTES
+from app.settings import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
 from app.settings import ALGORITHM
 from app.settings import SECRET_KEY
 from fastapi import APIRouter
@@ -190,3 +190,29 @@ async def validate_user(
         raise credentials_exception
 
     return user
+
+
+def create_refresh_token(
+    data: dict,
+    expires_delta: timedelta | None = None,
+    expire_time: int = REFRESH_TOKEN_EXPIRE_DAYS or 30,
+    unit: str = "days",
+) -> str:
+    if expires_delta is None:
+        expires_delta = calculate_expiration_time(expire_time, unit)
+    to_encode = data.copy()
+    to_encode.update({"exp": datetime.now(timezone.utc) +
+                     expires_delta, "type": "refresh"})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def decode_refresh_token(token: str) -> dict:
+    try:
+        data = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if data.get("type") != "refresh":
+            raise HTTPException(status_code=401, detail="Invalid token type")
+        return data
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Refresh token expired")
+    except jwt.JWTError:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
