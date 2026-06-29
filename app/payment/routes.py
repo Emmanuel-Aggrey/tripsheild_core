@@ -216,6 +216,63 @@ async def payment_redirect(request: Request, payment_id: str, db: Session = Depe
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
+@payment_public_router.post("/alpay-callback/")
+async def alpay_callback(request: Request, db: Session = Depends(get_db)):
+    try:
+        alpay_signature = request.headers.get("x-alpay-signature")
+        if not alpay_signature:
+            raise HTTPException(status_code=400, detail="No signature")
+
+        request_body = await request.body()
+        if not request_body:
+            raise HTTPException(status_code=400, detail="Empty body")
+
+        computed_signature = hmac.new(
+            settings.ALPAY_SECRET_KEY.encode("utf-8"),
+            request_body, hashlib.sha256
+        ).hexdigest()
+
+        if not hmac.compare_digest(computed_signature, alpay_signature):
+            raise HTTPException(status_code=400, detail="Invalid signature")
+
+        payload = json.loads(request_body.decode("utf-8"))
+        payment_status = payload.get("status")
+        reference = payload.get("reference")
+
+        if not all([payment_status, reference]):
+            raise HTTPException(status_code=400, detail="Missing fields")
+
+        payment = (
+            service_locator.general_service.get_data_by_field(
+                db=db, field="web_page_reference", value=reference, model=Payment
+            ) or service_locator.general_service.get_data_by_field(
+                db=db, field="ussd_reference", value=reference, model=Payment
+            )
+        )
+
+        if not payment:
+            raise HTTPException(status_code=404, detail="Payment not found")
+        if payment.status == Payment.STATUS.SUCCESS:
+            return {"message": "Already processed"}
+
+        if payment_status == "success":
+            service_locator.payment_service._finalize_successful_payment(
+                db, payment)
+        else:
+            service_locator.payment_service._mark_payment_failed(db, payment)
+
+        db.commit()
+        return {"message": "Processed", "payment_id": str(payment.id)}
+
+    except HTTPException:
+        raise
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON")
+    except Exception as e:
+        logger.error(f"Alpay callback error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Server error")
+
+
 @payment_public_router.post("/callback")
 async def paystack_callback(request: Request, db: Session = Depends(get_db)):
     try:
