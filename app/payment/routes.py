@@ -28,6 +28,7 @@ from uuid import UUID
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+payment_public_router = APIRouter()
 
 
 @cbv(router)
@@ -157,7 +158,7 @@ class PaymentView:
         return payment
 
 
-@router.get("/redirect/{payment_id}/")
+@payment_public_router.get("/redirect/{payment_id}/")
 async def payment_redirect(request: Request, payment_id: str, db: Session = Depends(get_db)):
     try:
         reference = request.query_params.get("reference")
@@ -215,7 +216,7 @@ async def payment_redirect(request: Request, payment_id: str, db: Session = Depe
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.post("/callback/")
+@payment_public_router.post("/callback")
 async def paystack_callback(request: Request, db: Session = Depends(get_db)):
     try:
         paystack_signature = request.headers.get("x-paystack-signature")
@@ -281,7 +282,7 @@ async def paystack_callback(request: Request, db: Session = Depends(get_db)):
 templates = Jinja2Templates(directory="app/templates")
 
 
-@router.get("/success", response_class=HTMLResponse)
+@payment_public_router.get("/success", response_class=HTMLResponse)
 def payment_success(request: Request):
     result_status = request.query_params.get("status")
     payment_id = request.query_params.get("payment_id")
