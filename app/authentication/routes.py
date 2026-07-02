@@ -237,7 +237,8 @@ class AuthenticationView:
 
         token_subject = user.email or user.phone_number
         access_token = create_access_token(data={"sub": token_subject})
-        return schemas.Token(access_token=access_token, token_type="bearer")
+        refresh_token = create_refresh_token(data={"sub": token_subject})
+        return schemas.Token(access_token=access_token, refresh_token=refresh_token, token_type="bearer")
 
     @router.post("/gimme-jwt/", response_model=schemas.Token)
     async def gimme_jwt(self, form_data: schemas.EmailPasswordLoginForm) -> schemas.Token:
