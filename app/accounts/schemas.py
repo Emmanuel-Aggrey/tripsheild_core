@@ -2,6 +2,7 @@ from typing import Optional
 from enum import Enum
 from app.core.schema import BaseSchema
 from pydantic import BaseModel
+from pydantic import model_validator
 
 
 class UserRoleEnum(str, Enum):
@@ -42,6 +43,16 @@ class UserResponseSchema(BaseUserSchema):
     gender: Optional[str] = None
     occupation: Optional[str] = None
     ghana_card_number: Optional[str] = None
+    is_registration_complete: bool = False
+
+    @model_validator(mode="after")
+    def set_registration_complete(self):
+        self.is_registration_complete = bool(
+            self.email
+            and self.first_name
+            and self.last_name
+        )
+        return self
 
 
 class UserProfileUpdateSchema(BaseModel):
