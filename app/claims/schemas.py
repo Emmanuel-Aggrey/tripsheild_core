@@ -1,5 +1,4 @@
 from datetime import datetime
-from decimal import Decimal
 from enum import Enum
 from typing import Optional, List
 from uuid import UUID
@@ -18,7 +17,6 @@ class ClaimStatusEnum(str, Enum):
 class ClaimCreateSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     subscription_id: UUID
-    claim_amount: Decimal = Field(..., max_digits=12, decimal_places=2)
     reason: str = Field(..., min_length=5)
     incident_date: Optional[datetime] = None
     type_of_incident_id: Optional[UUID] = None

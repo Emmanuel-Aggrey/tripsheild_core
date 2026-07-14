@@ -1,7 +1,6 @@
 from typing import Optional
 from uuid import UUID
 import logging
-from decimal import Decimal, InvalidOperation
 from app.database import SessionLocal
 from app.claims.models import Claim
 from app.packages.models import Subscription, Package
@@ -22,7 +21,6 @@ class ClaimService:
         db = SessionLocal()
         try:
             subscription_id = payload.get("subscription_id")
-            claim_amount = payload.get("claim_amount")
 
             subscription: Subscription = self.service_locator.general_service.filter_data(
                 db=db,
@@ -41,13 +39,10 @@ class ClaimService:
                 model=Package,
                 single_record=True,
             )
-            if package and package.coverage_amount:
-                try:
-                    if Decimal(str(claim_amount)) > Decimal(str(package.coverage_amount)):
-                        raise ValueError(
-                            "Claim amount exceeds package coverage")
-                except InvalidOperation:
-                    raise ValueError("Invalid claim amount")
+            if not package or not package.coverage_amount:
+                raise ValueError("Package has no coverage amount set")
+
+            claim_amount = package.coverage_amount
 
             storage_ids = payload.get("storages") or []
             storages = [
