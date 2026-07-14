@@ -39,10 +39,10 @@ class ClaimService:
                 model=Package,
                 single_record=True,
             )
-            if not package or not package.coverage_amount:
-                raise ValueError("Package has no coverage amount set")
+            if not package or not package.price:
+                raise ValueError("Package has no price set")
 
-            claim_amount = package.coverage_amount
+            claim_amount = package.price
 
             storage_ids = payload.get("storages") or []
             storages = [
