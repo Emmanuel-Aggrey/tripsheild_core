@@ -48,7 +48,7 @@ class UserResponseSchema(BaseUserSchema):
     @model_validator(mode="after")
     def set_registration_complete(self):
         self.is_registration_complete = bool(
-            self.email
+            self.phone_number
             and self.first_name
             and self.last_name
         )
