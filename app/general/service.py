@@ -88,12 +88,16 @@ class GeneralService:
         filter_values: dict,
         model: BaseModel,
         single_record: bool = False,
+        order_by=None,
     ):
         query = db.query(model)
 
         for key, value in filter_values.items():
             if hasattr(model, key):
                 query = query.filter(getattr(model, key) == value)
+
+        if order_by is not None:
+            query = query.order_by(order_by)
 
         return query.one_or_none() if single_record else query.all()
 

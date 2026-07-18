@@ -100,7 +100,8 @@ class ClaimService:
                 filter_values["status"] = status
 
             claims = self.service_locator.general_service.filter_data(
-                db=db, filter_values=filter_values, model=Claim, single_record=False
+                db=db, filter_values=filter_values, model=Claim, single_record=False,
+                order_by=Claim.created_at.desc()
             )
 
             total = len(claims)

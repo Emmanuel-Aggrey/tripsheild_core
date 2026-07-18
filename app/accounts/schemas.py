@@ -56,7 +56,7 @@ class UserResponseSchema(BaseUserSchema):
 
 
 class UserProfileUpdateSchema(BaseModel):
-    first_name: str
+    first_name: Optional[str] = None
     last_name: Optional[str] = None
     role: Optional[UserRoleEnum] = None
     profile_picture: Optional[str] = None

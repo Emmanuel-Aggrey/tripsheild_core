@@ -205,7 +205,8 @@ class InsuranceRecordService:
                 db=db,
                 filter_values=filter_values,
                 model=InsurancRecord,
-                single_record=False
+                single_record=False,
+                order_by=InsurancRecord.created_at.desc()
             )
 
             # Calculate pagination

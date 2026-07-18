@@ -135,7 +135,7 @@ class PackageView:
 
     @packages_router.get("/", response_model=Page[PackageResponseSchema])
     def list_packages(self, active_only: bool = Query(True), params: Params = Depends()):
-        queryset = self.db.query(Package)
+        queryset = self.db.query(Package).order_by(Package.created_at.desc())
         if active_only:
             queryset = queryset.filter(
                 Package.is_active.is_(True),
@@ -217,7 +217,7 @@ class SubscriptionView:
     ):
         queryset = self.db.query(Subscription).filter(
             Subscription.user_id == str(self.current_user.id)
-        )
+        ).order_by(Subscription.created_at.desc())
         if status_filter:
             queryset = queryset.filter(Subscription.status == status_filter)
         return sa_paginate(self.db, queryset, params)
